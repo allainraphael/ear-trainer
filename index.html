@@ -5,55 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ear Training Tool - CNSMDP</title>
 <style>
-body {
-    background: #fff;
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-}
-.container {
-    max-width: 1000px;
-    margin: 0 auto;
-}
+body { background: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+.container { max-width: 1000px; margin: 0 auto; }
 h1 { text-align: center; margin-bottom: 20px; }
-#spectrumContainer {
-    position: relative;
-    background: #000;
-    height: 400px;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    margin-bottom: 20px;
-}
+#spectrumContainer { position: relative; background: #fff; height: 400px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
 canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
-.controls {
-    text-align: center;
-    margin-top: 10px;
-}
-.controls button {
-    padding: 8px 15px;
-    margin: 0 5px;
-    font-size: 1em;
-    cursor: pointer;
-}
-input[type=file] { margin-bottom: 10px; display:block; margin-left:auto; margin-right:auto; }
-.volume-control { text-align:center; margin-top:10px; }
+.controls { margin-top: 10px; text-align: center; }
+button { padding: 8px 15px; margin: 0 5px; font-size: 1em; cursor: pointer; }
+input[type=file] { margin-bottom: 10px; }
+.volume-control { margin-top: 10px; text-align:center; }
 </style>
 </head>
 <body>
 <div class="container">
 <h1>Outil d'Ear Training - CNSMDP</h1>
 <input type="file" id="audioFile" accept="audio/*">
-
 <div id="spectrumContainer">
-    <canvas id="spectrum"></canvas>
+<canvas id="spectrum"></canvas>
 </div>
 
 <div class="controls">
-    <button id="playBtn">▶️ Lecture</button>
-    <button id="pauseBtn">⏸️ Pause</button>
-    <button id="stopBtn">⏹️ Stop</button>
-    <button id="loopBtn">🔄 Boucle</button>
+<button id="playBtn">▶️ Lecture</button>
+<button id="pauseBtn">⏸️ Pause</button>
+<button id="stopBtn">⏹️ Stop</button>
+<button id="loopBtn">🔄 Boucle</button>
 </div>
 
 <div class="volume-control">
@@ -72,7 +47,6 @@ let audioCtx, buffer, source, gainNode, analyser;
 let isPlaying=false, isLooping=false;
 let currentBand = null;
 
-// Définition des bandes
 const bands = [
 { name:'Sub-Bass', low:20, high:60, color:'#ff0000' },
 { name:'Bass', low:60, high:250, color:'#ff8000' },
@@ -85,7 +59,7 @@ const bands = [
 
 function freqToX(f){ 
     const minLog=Math.log10(20), maxLog=Math.log10(20000);
-    return (Math.log10(f)-minLog)/(maxLog-minLog)*canvas.width;
+    return (Math.log10(f)-minLog)/(maxLog-minLog)*canvas.offsetWidth;
 }
 
 function draw(){
@@ -94,13 +68,13 @@ function draw(){
     const data = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(data);
 
-    // Fond noir du spectre
-    ctx.fillStyle = '#000';
+    // Fond blanc
+    ctx.fillStyle = '#fff';
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     // Dessiner spectre
     ctx.beginPath();
-    ctx.lineWidth=2; ctx.strokeStyle='#fff';
+    ctx.lineWidth=2; ctx.strokeStyle='#000';
     const sampleRate = audioCtx.sampleRate;
     const nyquist = sampleRate/2;
     const len = data.length;
@@ -114,23 +88,15 @@ function draw(){
     }
     ctx.stroke();
 
-    // Dessiner bandes en transparence avec surbrillance
+    // Dessiner bandes en transparence
     bands.forEach((b,i)=>{
+        ctx.fillStyle = i===currentBand ? b.color+'aa' : b.color+'55';
         const x1=freqToX(b.low), x2=freqToX(b.high);
-        if(i===currentBand){
-            const grad = ctx.createLinearGradient(0,0,0,canvas.height);
-            grad.addColorStop(0, b.color+'cc');
-            grad.addColorStop(0.5, b.color+'99');
-            grad.addColorStop(1, b.color+'cc');
-            ctx.fillStyle = grad;
-        } else {
-            ctx.fillStyle = b.color+'33';
-        }
         ctx.fillRect(x1,0,x2-x1,canvas.height);
     });
 
     // Graduations logarithmiques
-    ctx.fillStyle='#fff';
+    ctx.fillStyle='#000';
     ctx.font='12px Arial';
     ctx.textAlign='center';
     const logTicks = [20,50,100,200,500,1000,2000,5000,10000,20000];
@@ -141,13 +107,13 @@ function draw(){
     });
 }
 
-// Sélection d’une bande au clic (sur toute la largeur de la bande)
+// Sélection d’une bande au clic
 canvas.addEventListener('click', e=>{
     const rect = canvas.getBoundingClientRect();
     const xClick = e.clientX - rect.left;
     const freqClick = 10**(Math.log10(20) + xClick/canvas.width*(Math.log10(20000)-Math.log10(20)));
     currentBand = bands.findIndex(b => freqClick>=b.low && freqClick<=b.high);
-    if(isPlaying) stop(); play();
+    stop(); play();
 });
 
 // Gestion fichier audio
@@ -191,9 +157,11 @@ function play(){
     if(currentBand!==null){
         const b = bands[currentBand];
         const hp1=audioCtx.createBiquadFilter(); hp1.type='highpass'; hp1.frequency.value=b.low;
+        const hp2=audioCtx.createBiquadFilter(); hp2.type='highpass'; hp2.frequency.value=b.low;
         const lp1=audioCtx.createBiquadFilter(); lp1.type='lowpass'; lp1.frequency.value=b.high;
-        lastNode.connect(hp1); hp1.connect(lp1);
-        lastNode = lp1;
+        const lp2=audioCtx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=b.high;
+        lastNode.connect(hp1); hp1.connect(hp2); hp2.connect(lp1); lp1.connect(lp2);
+        lastNode = lp2;
     }
 
     lastNode.connect(gainNode); gainNode.connect(analyser); analyser.connect(audioCtx.destination);
