@@ -192,6 +192,17 @@ class EarTraining {
                 ctx.fillRect(x1,0,x2-x1,height);
             });
 
+            // Afficher le nom et plage de la bande sélectionnée
+            if(this.currentBand){
+                const b = this.currentBand;
+                const x1 = this.freqToX(b.low,width);
+                const x2 = this.freqToX(b.high,width);
+                ctx.fillStyle='rgba(255,255,255,0.9)';
+                ctx.font='16px Arial';
+                ctx.textAlign='center';
+                ctx.fillText(`${b.name}: ${b.low}Hz - ${b.high}Hz`, (x1+x2)/2, 30);
+            }
+
             // Dessiner spectre
             const nyq = this.audioCtx.sampleRate/2;
             ctx.beginPath();
