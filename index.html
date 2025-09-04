@@ -23,7 +23,13 @@
         border-radius: 25px;
         margin-bottom: 10px;
     }
-    .controls { display: flex; justify-content: center; gap: 10px; margin: 10px 0; }
+    .controls, .extra-controls { 
+        display: flex; 
+        justify-content: center; 
+        gap: 10px; 
+        margin: 10px 0; 
+        flex-wrap: wrap;
+    }
     .control-btn {
         padding: 8px 15px;
         border: 1px solid #ccc;
@@ -33,6 +39,11 @@
     }
     .control-btn.active { background: #28a745; color: #fff; }
     #spectrum { width: 100%; height: 300px; background: #000; display: block; margin-top: 20px; }
+    #quizMsg { text-align: center; font-weight: bold; margin-top: 10px; }
+    @media (max-width:600px){
+        .control-btn { flex:1 1 40%; }
+        #spectrum { height:200px; }
+    }
 </style>
 </head>
 <body>
@@ -46,9 +57,18 @@
         <button class="control-btn" id="pauseBtn">⏸️ Pause</button>
         <button class="control-btn" id="stopBtn">⏹️ Stop</button>
         <button class="control-btn active" id="loopBtn">🔄 Boucle ON</button>
+        <button class="control-btn" id="resetBandBtn">♻️ Reset bande</button>
+    </div>
+
+    <div class="extra-controls">
+        <label>Volume : 
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
+        </label>
+        <button class="control-btn" id="quizBtn">🎯 Lancer Quiz</button>
     </div>
 
     <canvas id="spectrum"></canvas>
+    <div id="quizMsg"></div>
 </div>
 
 <script>
@@ -61,11 +81,14 @@ class EarTrainingTool {
         this.filterNode = null;
         this.analyser = null;
         this.isPlaying = false;
-        this.isLooping = true; // boucle activée par défaut
+        this.isLooping = true;
         this.currentBand = null;
         this.animationFrame = null;
         this.canvas = document.getElementById('spectrum');
         this.ctx = this.canvas.getContext('2d');
+        this.floatData = null; 
+        this.quizMode = false;
+        this.quizBand = null;
 
         this.frequencyBands = {
             'sub-bass': { low: 20, high: 60, name: 'Sub-Bass', color: '#ff6b6b' },
@@ -95,6 +118,9 @@ class EarTrainingTool {
         document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
         document.getElementById('stopBtn').addEventListener('click', () => this.stop());
         document.getElementById('loopBtn').addEventListener('click', () => this.toggleLoop());
+        document.getElementById('volumeSlider').addEventListener('input', (e)=>this.changeVolume(e));
+        document.getElementById('resetBandBtn').addEventListener('click', ()=>this.resetBand());
+        document.getElementById('quizBtn').addEventListener('click', ()=>this.startQuiz());
     }
 
     async loadAudioFile(event) {
@@ -107,6 +133,7 @@ class EarTrainingTool {
 
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = 2048;
+            this.floatData = new Float32Array(this.analyser.frequencyBinCount);
 
             this.startVisualization();
             this.play();
@@ -119,12 +146,10 @@ class EarTrainingTool {
         const highpass = this.audioContext.createBiquadFilter();
         highpass.type = 'highpass';
         highpass.frequency.value = lowFreq;
-        highpass.Q.value = 5; // pente plus raide
 
         const lowpass = this.audioContext.createBiquadFilter();
         lowpass.type = 'lowpass';
         lowpass.frequency.value = highFreq;
-        lowpass.Q.value = 5;
 
         highpass.connect(lowpass);
         return { input: highpass, output: lowpass };
@@ -144,15 +169,21 @@ class EarTrainingTool {
     }
 
     play() {
-        if(!this.audioBuffer) return;
-        this.stop();
+        if(!this.audioBuffer || !this.audioContext) return;
 
+        if(this.audioContext.state === "suspended"){
+            this.audioContext.resume();
+            this.isPlaying = true;
+            return;
+        }
+
+        this.stop();
         this.source = this.audioContext.createBufferSource();
         this.source.buffer = this.audioBuffer;
         this.source.loop = this.isLooping;
 
         this.gainNode = this.audioContext.createGain();
-        this.gainNode.gain.value = 0.7;
+        this.gainNode.gain.value = document.getElementById("volumeSlider").value;
 
         let outputNode = this.gainNode;
         if(this.currentBand) {
@@ -171,18 +202,27 @@ class EarTrainingTool {
     }
 
     pause() {
-        if(this.source && this.isPlaying) {
-            this.source.stop();
+        if(this.audioContext && this.audioContext.state === "running"){
+            this.audioContext.suspend();
             this.isPlaying = false;
         }
     }
 
     stop() {
         if(this.source) {
-            this.source.stop();
+            try{ this.source.stop(); } catch(e){}
             this.source = null;
-            this.isPlaying = false;
         }
+        this.isPlaying = false;
+    }
+
+    resetBand(){
+        this.currentBand = null;
+        if(this.isPlaying) this.play();
+    }
+
+    changeVolume(e){
+        if(this.gainNode) this.gainNode.gain.value = e.target.value;
     }
 
     handleCanvasClick(event) {
@@ -190,7 +230,6 @@ class EarTrainingTool {
         const x = event.clientX - rect.left;
         const width = this.canvas.offsetWidth;
 
-        // Logarithmique
         const minLog = Math.log10(20);
         const maxLog = Math.log10(20000);
         const logFreq = minLog + ((x / width) * (maxLog - minLog));
@@ -199,8 +238,12 @@ class EarTrainingTool {
         for(const key in this.frequencyBands) {
             const band = this.frequencyBands[key];
             if(frequency >= band.low && frequency <= band.high) {
-                this.currentBand = key;
-                if(this.isPlaying) this.play();
+                if(this.quizMode){
+                    this.checkQuizAnswer(key);
+                } else {
+                    this.currentBand = key;
+                    if(this.isPlaying) this.play();
+                }
                 break;
             }
         }
@@ -223,11 +266,9 @@ class EarTrainingTool {
 
         if(!this.analyser) return;
 
-        const bufferLength = this.analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        this.analyser.getByteFrequencyData(dataArray);
+        this.analyser.getFloatFrequencyData(this.floatData);
 
-        // Dessiner bandes
+        // bandes
         for(const key in this.frequencyBands) {
             const band = this.frequencyBands[key];
             const x1 = this.frequencyToX(band.low, width);
@@ -240,21 +281,32 @@ class EarTrainingTool {
                 ctx.font='14px Arial';
                 ctx.textAlign='center';
                 ctx.fillText(band.name, (x1+x2)/2, 20);
-                ctx.fillText(`${band.low}-${band.high}Hz`, (x1+x2)/2, 40);
             }
         }
 
-        // Dessiner spectre
-        const sampleRate = this.audioContext.sampleRate;
-        const nyquist = sampleRate / 2;
+        // repères
+        [100,1000,10000].forEach(freq=>{
+            const x=this.frequencyToX(freq,width);
+            ctx.strokeStyle="#666";
+            ctx.beginPath();
+            ctx.moveTo(x,0);
+            ctx.lineTo(x,height);
+            ctx.stroke();
+            ctx.fillStyle="#aaa";
+            ctx.fillText(freq+"Hz",x+5,height-5);
+        });
+
+        // spectre lissé
         ctx.beginPath();
         ctx.strokeStyle = '#4facfe';
         ctx.lineWidth = 2;
-        for(let i=0;i<bufferLength;i++){
-            const freq = (i*nyquist)/bufferLength;
+        for(let i=0;i<this.floatData.length;i++){
+            const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
             if(freq<20 || freq>20000) continue;
             const x = this.frequencyToX(freq, width);
-            const y = height - dataArray[i]*height/255;
+            const dB = this.floatData[i];
+            const norm = (dB+100)/100; 
+            const y = height - norm*height;
             if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
         }
         ctx.stroke();
@@ -265,6 +317,27 @@ class EarTrainingTool {
         const maxLog=Math.log10(20000);
         const logFreq=Math.log10(freq);
         return ((logFreq-minLog)/(maxLog-minLog))*width;
+    }
+
+    // --- Quiz ---
+    startQuiz(){
+        this.quizMode = true;
+        const keys = Object.keys(this.frequencyBands);
+        this.quizBand = keys[Math.floor(Math.random()*keys.length)];
+        this.currentBand = this.quizBand;
+        this.play();
+        document.getElementById("quizMsg").textContent="🎧 Devine la bande jouée ! Clique sur le spectre.";
+    }
+
+    checkQuizAnswer(key){
+        if(key===this.quizBand){
+            document.getElementById("quizMsg").textContent="✅ Bravo ! C'était bien "+this.frequencyBands[key].name;
+        } else {
+            document.getElementById("quizMsg").textContent="❌ Mauvaise réponse. C'était "+this.frequencyBands[this.quizBand].name;
+        }
+        this.quizMode=false;
+        this.currentBand=null;
+        this.play();
     }
 }
 
