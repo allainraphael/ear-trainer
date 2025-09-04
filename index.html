@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ear Training Tool - CNSMDP</title>
 <style>
-body {
-    margin:0; font-family:sans-serif; background:#1e1e2f; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh;
-}
+body {margin:0; font-family:sans-serif; background:#1e1e2f; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh;}
 #container {position:relative; width:90%; max-width:1000px;}
 canvas {width:100%; height:400px; background:#111; border-radius:10px;}
 .freq-btns {position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:space-between; pointer-events:none;}
@@ -19,7 +17,7 @@ canvas {width:100%; height:400px; background:#111; border-radius:10px;}
 }
 .freq-btns button.active {background:rgba(255,107,107,0.7); color:#000;}
 .controls {margin-top:10px; display:flex; gap:5px; justify-content:center;}
-.controls button {padding:5px 10px; cursor:pointer;}
+.controls button, .controls input[type=range]{padding:5px 10px; cursor:pointer;}
 #volumeSlider {width:200px;}
 </style>
 </head>
@@ -52,7 +50,7 @@ class EarTrainer {
         this.buffer=null;
         this.source=null;
         this.gainNode=null;
-        this.filterNode=null;
+        this.filterNodes=[];
         this.analyser=null;
         this.isPlaying=false;
         this.isLoop=false;
@@ -109,6 +107,20 @@ class EarTrainer {
         this.analyser.fftSize=2048;
     }
 
+    createSteepFilter(low,high){
+        // Chaîner deux filtres pour augmenter la pente (~12dB/oct)
+        let filters=[];
+        let hp1=this.audioCtx.createBiquadFilter(); hp1.type='highpass'; hp1.frequency.value=low;
+        let hp2=this.audioCtx.createBiquadFilter(); hp2.type='highpass'; hp2.frequency.value=low;
+        hp1.connect(hp2);
+        filters.push(hp1,hp2);
+        let lp1=this.audioCtx.createBiquadFilter(); lp1.type='lowpass'; lp1.frequency.value=high;
+        let lp2=this.audioCtx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=high;
+        hp2.connect(lp1); lp1.connect(lp2);
+        filters.push(lp1,lp2);
+        return filters;
+    }
+
     play(){
         if(!this.buffer)return;
         this.stop();
@@ -120,17 +132,14 @@ class EarTrainer {
         this.gainNode.gain.value=document.getElementById('volumeSlider').value;
 
         if(this.currentBand){
-            let [low,high]=this.bands[this.currentBand];
-            const highpass=this.audioCtx.createBiquadFilter();
-            highpass.type='highpass'; highpass.frequency.value=low;
-            const lowpass=this.audioCtx.createBiquadFilter();
-            lowpass.type='lowpass'; lowpass.frequency.value=high;
-            highpass.connect(lowpass);
-            lowpass.connect(this.gainNode);
-            this.source.connect(highpass);
+            this.filterNodes=this.createSteepFilter(...this.bands[this.currentBand]);
+            this.source.connect(this.filterNodes[0]);
+            for(let i=0;i<this.filterNodes.length-1;i++) this.filterNodes[i].connect(this.filterNodes[i+1]);
+            this.filterNodes[this.filterNodes.length-1].connect(this.gainNode);
         }else{
             this.source.connect(this.gainNode);
         }
+
         this.gainNode.connect(this.analyser);
         this.analyser.connect(this.audioCtx.destination);
         this.source.start();
@@ -153,7 +162,7 @@ class EarTrainer {
         const dataArray=new Uint8Array(bufferLength);
         this.analyser.getByteFrequencyData(dataArray);
 
-        // Draw spectrum log
+        // Dessiner spectre log
         ctx.beginPath();
         ctx.strokeStyle='#4facfe'; ctx.lineWidth=2;
         for(let i=0;i<bufferLength;i++){
@@ -165,7 +174,7 @@ class EarTrainer {
         }
         ctx.stroke();
 
-        // Draw frequency band overlays
+        // Dessiner bandes de fréquence
         for(let b in this.bands){
             let [low,high]=this.bands[b];
             let x1=(Math.log10(low/20)/Math.log10(20000/20))*width;
@@ -173,6 +182,14 @@ class EarTrainer {
             ctx.fillStyle=(this.currentBand===b)?'rgba(255,107,107,0.4)':'rgba(255,255,255,0.05)';
             ctx.fillRect(x1,0,x2-x1,height);
         }
+
+        // Dessiner axe X logarithmique
+        const freqs=[20,50,100,200,500,1000,2000,5000,10000,20000];
+        ctx.fillStyle='#fff'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+        freqs.forEach(f=>{
+            let x=(Math.log10(f/20)/Math.log10(20000/20))*width;
+            ctx.fillText(f>=1000?f/1000+'k':f,x,height-5);
+        });
 
         requestAnimationFrame(()=>this.drawSpectrum());
     }
