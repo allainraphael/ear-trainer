@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ear Training Tool</title>
+<title>Ear Training Tool - Bande Superposée</title>
 <style>
 body { font-family: Arial, sans-serif; background:#222; color:#fff; text-align:center; padding:20px; }
 #spectrumContainer { position: relative; width: 100%; max-width:900px; height:300px; margin: auto; background:#000; border-radius:10px; }
 canvas { width:100%; height:100%; display:block; border-radius:10px; }
 #bandButtonsContainer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
-.freq-band-btn { position:absolute; top:0; height:100%; pointer-events:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.8em; transition: background 0.3s; }
+.freq-band-btn { position:absolute; top:0; height:100%; pointer-events:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.8em; transition: background 0.3s; border-radius:5px 5px 0 0; }
 .freq-band-btn.active { background: rgba(255,255,255,0.4); color:#000; font-weight:bold; }
-.controls { margin-top:10px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+.controls { margin-top:10px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; z-index:10; position: relative; }
 .controls button { padding:10px 20px; border:none; border-radius:5px; background:linear-gradient(45deg,#4facfe,#00f2fe); color:#fff; cursor:pointer; font-size:1em; }
 .controls button.active { background:linear-gradient(45deg,#ff6b6b,#ffd93d); color:#000; }
 #fileInput { margin-bottom:10px; }
@@ -81,8 +81,7 @@ class EarTrainingTool {
         document.getElementById('stopBtn').addEventListener('click', () => this.stop());
         document.getElementById('loopBtn').addEventListener('click', () => this.toggleLoop());
         document.getElementById('volumeSlider').addEventListener('input', e => this.setVolume(e.target.value));
-
-        window.addEventListener('resize', () => this.setupCanvas());
+        window.addEventListener('resize', () => { this.setupCanvas(); this.createBandButtons(); });
     }
 
     async loadFile(event) {
@@ -114,17 +113,18 @@ class EarTrainingTool {
         this.gainNode = this.audioContext.createGain();
         this.gainNode.gain.value = document.getElementById('volumeSlider').value;
 
+        let lastNode = this.source;
+
         if(this.currentBand){
             const band = this.bands[this.currentBand];
             const highpass = this.audioContext.createBiquadFilter();
             highpass.type='highpass'; highpass.frequency.value = band.low;
             const lowpass = this.audioContext.createBiquadFilter();
             lowpass.type='lowpass'; lowpass.frequency.value = band.high;
-            this.source.connect(highpass); highpass.connect(lowpass); lowpass.connect(this.gainNode);
-        } else {
-            this.source.connect(this.gainNode);
+            lastNode.connect(highpass); highpass.connect(lowpass); lastNode = lowpass;
         }
 
+        lastNode.connect(this.gainNode);
         this.gainNode.connect(this.analyser);
         this.analyser.connect(this.audioContext.destination);
         this.source.start();
@@ -146,23 +146,30 @@ class EarTrainingTool {
         const container = document.getElementById('bandButtonsContainer');
         container.innerHTML='';
         const width = container.offsetWidth;
+        const height = container.offsetHeight;
 
         Object.keys(this.bands).forEach(name=>{
             const b = this.bands[name];
             const btn = document.createElement('div');
             btn.classList.add('freq-band-btn');
+
+            // Calcul logarithmique
             const x1 = Math.log10(b.low/20)/Math.log10(20000/20)*width;
             const x2 = Math.log10(b.high/20)/Math.log10(20000/20)*width;
+
             btn.style.left = x1+'px';
             btn.style.width = (x2-x1)+'px';
+            btn.style.height = (height-0)+'px';
             btn.style.background = b.color;
             btn.textContent = name;
+
             btn.addEventListener('click', ()=>{
                 this.currentBand = this.currentBand===name?null:name;
                 Array.from(container.children).forEach(c=>c.classList.remove('active'));
                 if(this.currentBand) btn.classList.add('active');
                 this.play();
             });
+
             container.appendChild(btn);
         });
     }
@@ -176,10 +183,14 @@ class EarTrainingTool {
             if(!this.isPlaying) return;
             requestAnimationFrame(draw);
             this.analyser.getByteFrequencyData(dataArray);
+
+            ctx.clearRect(0,0,width,height);
+
+            // Fond noir
             ctx.fillStyle='#000';
             ctx.fillRect(0,0,width,height);
 
-            // Dessiner spectre
+            // Spectre
             ctx.beginPath();
             ctx.strokeStyle='#0f0';
             ctx.lineWidth=2;
@@ -193,7 +204,7 @@ class EarTrainingTool {
             }
             ctx.stroke();
 
-            // Dessiner axes des fréquences
+            // Axes fréquences
             ctx.fillStyle='#fff';
             ctx.font='10px Arial';
             [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
