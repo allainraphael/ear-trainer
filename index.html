@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Ear Training Simplifié</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #1e3c72;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    #spectrum {
+      width: 100%;
+      height: 300px;
+      background: black;
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+    .controls {
+      margin: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 0 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    input[type=range] {
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Outil d'Ear Training (simplifié)</h1>
+  <input type="file" id="fileInput" accept="audio/*">
+  <p id="fileInfo">Aucun fichier chargé</p>
+
+  <div class="controls">
+    <button id="playBtn">▶️ Lecture</button>
+    <button id="pauseBtn">⏸️ Pause</button>
+    <button id="stopBtn">⏹️ Stop</button>
+    <br><br>
+    🔊 Volume :
+    <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
+  </div>
+
+  <canvas id="spectrum"></canvas>
+
+  <script>
+    class SimpleEarTrainer {
+      constructor() {
+        this.audioContext = null;
+        this.audioBuffer = null;
+        this.source = null;
+        this.gainNode = null;
+        this.analyser = null;
+        this.isPlaying = false;
+        this.startedAt = 0;
+        this.pausedAt = 0;
+
+        this.canvas = document.getElementById("spectrum");
+        this.ctx = this.canvas.getContext("2d");
+
+        this.setupEvents();
+        this.resizeCanvas();
+        window.addEventListener("resize", () => this.resizeCanvas());
+      }
+
+      setupEvents() {
+        document.getElementById("fileInput").addEventListener("change", e => this.loadFile(e));
+        document.getElementById("playBtn").addEventListener("click", () => this.play());
+        document.getElementById("pauseBtn").addEventListener("click", () => this.pause());
+        document.getElementById("stopBtn").addEventListener("click", () => this.stop());
+        document.getElementById("volumeSlider").addEventListener("input", e => {
+          if (this.gainNode) this.gainNode.gain.value = e.target.value;
+        });
+      }
+
+      resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.width = this.canvas.clientWidth * dpr;
+        this.canvas.height = this.canvas.clientHeight * dpr;
+        this.ctx.scale(dpr, dpr);
+      }
+
+      async loadFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!this.audioContext) {
+          this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+
+        document.getElementById("fileInfo").textContent =
+          `Fichier : ${file.name} (${this.audioBuffer.duration.toFixed(1)}s)`;
+
+        // Préparer l'analyseur
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 2048;
+        this.startVisualization();
+      }
+
+      createSource() {
+        this.source = this.audioContext.createBufferSource();
+        this.source.buffer = this.audioBuffer;
+
+        this.gainNode = this.audioContext.createGain();
+        this.gainNode.gain.value = document.getElementById("volumeSlider").value;
+
+        this.source.connect(this.gainNode);
+        this.gainNode.connect(this.analyser);
+        this.analyser.connect(this.audioContext.destination);
+      }
+
+      play() {
+        if (!this.audioBuffer || this.isPlaying) return;
+
+        this.createSource();
+
+        const offset = this.pausedAt || 0;
+        this.startedAt = this.audioContext.currentTime - offset;
+        this.source.start(0, offset);
+
+        this.isPlaying = true;
+        this.source.onended = () => {
+          if (!this.isPlaying) return; // évite reset si pause
+          this.stop();
+        };
+      }
+
+      pause() {
+        if (this.source && this.isPlaying) {
+          this.source.stop();
+          this.pausedAt = this.audioContext.currentTime - this.startedAt;
+          this.isPlaying = false;
+        }
+      }
+
+      stop() {
+        if (this.source) {
+          this.source.stop();
+          this.source.disconnect();
+        }
+        this.isPlaying = false;
+        this.pausedAt = 0;
+      }
+
+      startVisualization() {
+        const draw = () => {
+          if (!this.analyser) return;
+          const bufferLength = this.analyser.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+          this.analyser.getByteFrequencyData(dataArray);
+
+          const width = this.canvas.clientWidth;
+          const height = this.canvas.clientHeight;
+
+          this.ctx.fillStyle = "black";
+          this.ctx.fillRect(0, 0, width, height);
+
+          const barWidth = width / bufferLength;
+          for (let i = 0; i < bufferLength; i++) {
+            const value = dataArray[i];
+            const barHeight = (value / 255) * height;
+            this.ctx.fillStyle = "lime";
+            this.ctx.fillRect(i * barWidth, height - barHeight, barWidth, barHeight);
+          }
+
+          requestAnimationFrame(draw);
+        };
+        draw();
+      }
+    }
+
+    new SimpleEarTrainer();
+  </script>
+</body>
+</html>
