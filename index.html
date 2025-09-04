@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Outil d'Ear Training - CNSMDP</title>
+<title>Outil d'Ear Training</title>
 <style>
     body {
         background: #fff;
@@ -102,19 +102,18 @@ class EarTrainingTool {
 
         let inputNode = this.source;
         if(this.currentBand){
-            // filtre bande passante
-            const band = this.currentBand;
-            const highpass = this.audioCtx.createBiquadFilter();
-            highpass.type = 'highpass';
-            highpass.frequency.value = band.low;
-            highpass.Q.value = 1;
-            const lowpass = this.audioCtx.createBiquadFilter();
-            lowpass.type = 'lowpass';
-            lowpass.frequency.value = band.high;
-            lowpass.Q.value = 1;
-            inputNode.connect(highpass);
-            highpass.connect(lowpass);
-            lowpass.connect(this.gainNode);
+            const b = this.currentBand;
+            const hp = this.audioCtx.createBiquadFilter();
+            hp.type = 'highpass';
+            hp.frequency.value = b.low;
+            hp.Q.value = 1;
+            const lp = this.audioCtx.createBiquadFilter();
+            lp.type = 'lowpass';
+            lp.frequency.value = b.high;
+            lp.Q.value = 1;
+            inputNode.connect(hp);
+            hp.connect(lp);
+            lp.connect(this.gainNode);
         } else {
             inputNode.connect(this.gainNode);
         }
@@ -156,7 +155,7 @@ class EarTrainingTool {
         for(let b of this.bands){
             if(freq>=b.low && freq<=b.high){
                 this.currentBand = b;
-                if(this.isPlaying) this.play(); // réappliquer filtre
+                if(this.isPlaying) this.play();
                 break;
             }
         }
@@ -175,27 +174,9 @@ class EarTrainingTool {
         const w = this.canvas.width;
         const h = this.canvas.height;
 
-        // fond
+        // spectre
         ctx.fillStyle = '#000';
         ctx.fillRect(0,0,w,h);
-
-        // dessiner bandes
-        this.bands.forEach(b=>{
-            const x1=this.frequencyToX(b.low);
-            const x2=this.frequencyToX(b.high);
-            ctx.fillStyle=(this.currentBand===b)?b.color.replace(/0\.3/,'0.8'):b.color;
-            ctx.fillRect(x1,0,x2-x1,h);
-
-            if(this.currentBand===b){
-                ctx.fillStyle='white';
-                ctx.font='14px Arial';
-                ctx.textAlign='center';
-                ctx.fillText(b.name,(x1+x2)/2,h/2-8);
-                ctx.fillText(`${b.low}-${b.high} Hz`,(x1+x2)/2,h/2+10);
-            }
-        });
-
-        // spectre si audio
         if(this.analyser){
             const bufferLength = this.analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
@@ -214,6 +195,22 @@ class EarTrainingTool {
             }
             ctx.stroke();
         }
+
+        // bandes de fréquence par-dessus
+        this.bands.forEach(b=>{
+            const x1=this.frequencyToX(b.low);
+            const x2=this.frequencyToX(b.high);
+            ctx.fillStyle=(this.currentBand===b)?b.color.replace(/0\.3/,'0.8'):b.color;
+            ctx.fillRect(x1,0,x2-x1,h);
+
+            if(this.currentBand===b){
+                ctx.fillStyle='white';
+                ctx.font='14px Arial';
+                ctx.textAlign='center';
+                ctx.fillText(b.name,(x1+x2)/2,h/2-8);
+                ctx.fillText(`${b.low}-${b.high} Hz`,(x1+x2)/2,h/2+10);
+            }
+        });
 
         requestAnimationFrame(()=>this.draw());
     }
