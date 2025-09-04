@@ -273,88 +273,66 @@ class EarTrainingTool {
     }
 
     drawSpectrum() {
-        const ctx = this.ctx;
-        const width = this.canvas.offsetWidth;
-        const height = this.canvas.offsetHeight;
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, width, height);
+    const ctx = this.ctx;
+    const width = this.canvas.offsetWidth;
+    const height = this.canvas.offsetHeight;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
 
-        if(!this.analyser) return;
+    if(!this.analyser) return;
 
-        this.analyser.getFloatFrequencyData(this.floatData);
+    this.analyser.getFloatFrequencyData(this.floatData);
 
-        // repères dB (axe vertical)
-        const dBsteps = [20, 0, -20, -40, -60, -80, -100];
-        ctx.strokeStyle = "#333";
-        ctx.fillStyle = "#aaa";
-        ctx.font = "10px Arial";
-        ctx.textAlign="right";
-        dBsteps.forEach(db=>{
-            const y = this.dbToY(db,height);
-            ctx.beginPath();
-            ctx.moveTo(0,y);
-            ctx.lineTo(width,y);
-            ctx.stroke();
-            ctx.fillText(db+" dB", width-2, y-2);
-        });
+    // repères dB (sans lignes, juste les labels)
+    const dBsteps = [20, 0, -20, -40, -60, -80, -100];
+    ctx.fillStyle = "#aaa";
+    ctx.font = "10px Arial";
+    ctx.textAlign="right";
+    dBsteps.forEach(db=>{
+        const y = this.dbToY(db,height);
+        ctx.fillText(db+" dB", width-2, y-2);
+    });
 
-        // bandes
-        for(const key in this.frequencyBands) {
-            const band = this.frequencyBands[key];
-            const x1 = this.frequencyToX(band.low, width);
-            const x2 = this.frequencyToX(band.high, width);
-            ctx.fillStyle = (this.currentBand===key) ? band.color : band.color+'44';
-            ctx.fillRect(x1, 0, x2-x1, height);
+    // bandes
+    for(const key in this.frequencyBands) {
+        const band = this.frequencyBands[key];
+        const x1 = this.frequencyToX(band.low, width);
+        const x2 = this.frequencyToX(band.high, width);
+        ctx.fillStyle = (this.currentBand===key) ? band.color : band.color+'44';
+        ctx.fillRect(x1, 0, x2-x1, height);
 
-            ctx.fillStyle='#fff';
-            ctx.font='12px Arial';
-            ctx.textAlign='center';
-            ctx.fillText(`${band.name}`, (x1+x2)/2, 20);
-            ctx.fillText(`${band.low}-${band.high} Hz`, (x1+x2)/2, 35);
-        }
-
-        // repères fréquentiels (axe horizontal)
-        const freqs=[20,50,100,200,500,1000,2000,5000,10000,20000];
-        ctx.strokeStyle="#444";
-        ctx.fillStyle="#aaa";
-        ctx.font="10px Arial";
-        ctx.textAlign="left";
-        freqs.forEach(freq=>{
-            const x=this.frequencyToX(freq,width);
-            ctx.beginPath();
-            ctx.moveTo(x,0);
-            ctx.lineTo(x,height);
-            ctx.stroke();
-            ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz",x+2,height-5);
-        });
-
-        // spectre
-        ctx.beginPath();
-        ctx.strokeStyle = '#4facfe';
-        ctx.lineWidth = 2;
-        for(let i=0;i<this.floatData.length;i++){
-            const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
-            if(freq<20 || freq>20000) continue;
-            const x = this.frequencyToX(freq, width);
-            const dB = this.floatData[i];
-            const y = this.dbToY(dB, height);
-            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-        }
-        ctx.stroke();
+        ctx.fillStyle='#fff';
+        ctx.font='12px Arial';
+        ctx.textAlign='center';
+        ctx.fillText(`${band.name}`, (x1+x2)/2, 20);
+        ctx.fillText(`${band.low}-${band.high} Hz`, (x1+x2)/2, 35);
     }
 
-    frequencyToX(freq,width){
-        const minLog=Math.log10(20);
-        const maxLog=Math.log10(20000);
-        const logFreq=Math.log10(freq);
-        return ((logFreq-minLog)/(maxLog-minLog))*width;
-    }
+    // repères fréquenciels (juste labels, pas de lignes)
+    const freqs=[20,50,100,200,500,1000,2000,5000,10000,20000];
+    ctx.fillStyle="#aaa";
+    ctx.font="10px Arial";
+    ctx.textAlign="left";
+    freqs.forEach(freq=>{
+        const x=this.frequencyToX(freq,width);
+        ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz",x+2,height-5);
+    });
 
-    dbToY(db,height){
-        const maxDb=20;
-        const minDb=-100;
-        return ((maxDb-db)/(maxDb-minDb))*height;
+    // spectre
+    ctx.beginPath();
+    ctx.strokeStyle = '#4facfe';
+    ctx.lineWidth = 2;
+    for(let i=0;i<this.floatData.length;i++){
+        const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
+        if(freq<20 || freq>20000) continue;
+        const x = this.frequencyToX(freq, width);
+        const dB = this.floatData[i];
+        const y = this.dbToY(dB, height);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
+    ctx.stroke();
+}
+
 
     // --- Quiz ---
     startQuiz(){
