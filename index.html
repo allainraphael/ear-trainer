@@ -53,9 +53,9 @@ class EarTraining{
     }
 
     setupCanvas(){
-        this.canvas.width=this.canvas.offsetWidth*window.devicePixelRatio;
-        this.canvas.height=this.canvas.offsetHeight*window.devicePixelRatio;
-        this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        // On fixe la taille CSS et canvas simple (sans devicePixelRatio)
+        this.canvas.width=this.canvas.offsetWidth;
+        this.canvas.height=this.canvas.offsetHeight;
     }
 
     initListeners(){
@@ -68,7 +68,7 @@ class EarTraining{
         this.canvas.addEventListener('click', e=>{
             const rect=this.canvas.getBoundingClientRect();
             const x=e.clientX-rect.left;
-            const width=this.canvas.offsetWidth;
+            const width=this.canvas.width;
             const logMin=Math.log10(20);
             const logMax=Math.log10(20000);
             const freq=Math.pow(10, logMin + (x/width)*(logMax-logMin));
@@ -128,8 +128,8 @@ class EarTraining{
         const draw=()=>{
             if(!this.analyser) return;
             const ctx=this.ctx;
-            const width=this.canvas.offsetWidth;
-            const height=this.canvas.offsetHeight;
+            const width=this.canvas.width;
+            const height=this.canvas.height;
             const bufferLength=this.analyser.frequencyBinCount;
             const dataArray=new Uint8Array(bufferLength);
             this.analyser.getByteFrequencyData(dataArray);
@@ -158,7 +158,7 @@ class EarTraining{
                 ctx.fillRect(x1,0,x2-x1,height);
             });
 
-            // Afficher le nom et plage de la bande sélectionnée **dans la bande**
+            // Afficher le nom et plage de la bande sélectionnée dans la bande
             if(this.currentBand){
                 const b=this.currentBand;
                 const x1=this.freqToX(b.low,width);
