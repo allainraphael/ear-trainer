@@ -90,6 +90,9 @@ class EarTrainingTool {
         this.quizMode = false;
         this.quizBand = null;
 
+        this.startTime = 0;
+        this.pauseTime = 0;
+
         this.frequencyBands = {
             'sub-bass': { low: 20, high: 60, name: 'Sub-Bass', color: '#ff6b6b' },
             'bass': { low: 60, high: 250, name: 'Bass', color: '#ffa500' },
@@ -155,9 +158,23 @@ class EarTrainingTool {
         return { input: highpass, output: lowpass };
     }
 
-    selectFrequencyBand(frequency) {
-        this.currentBand = frequency;
-        if(this.isPlaying) this.play();
+    updateFilter(){
+        if(!this.gainNode) return;
+        if(this.filterNode){
+            this.filterNode.input.disconnect();
+            this.filterNode.output.disconnect();
+            this.filterNode=null;
+        }
+        if(this.currentBand){
+            const band = this.frequencyBands[this.currentBand];
+            this.filterNode = this.createBandpassFilter(band.low, band.high);
+            this.source.disconnect();
+            this.source.connect(this.filterNode.input);
+            this.filterNode.output.connect(this.gainNode);
+        } else {
+            this.source.disconnect();
+            this.source.connect(this.gainNode);
+        }
     }
 
     toggleLoop() {
@@ -165,44 +182,41 @@ class EarTrainingTool {
         const btn = document.getElementById('loopBtn');
         btn.classList.toggle('active', this.isLooping);
         btn.textContent = this.isLooping ? '🔄 Boucle ON' : '🔄 Boucle OFF';
-        if(this.isPlaying) this.play();
+        if(this.source) this.source.loop=this.isLooping;
     }
 
     play() {
         if(!this.audioBuffer || !this.audioContext) return;
 
-        if(this.audioContext.state === "suspended"){
+        if(this.source && this.audioContext.state==="suspended"){
             this.audioContext.resume();
-            this.isPlaying = true;
+            this.isPlaying=true;
             return;
         }
 
-        this.stop();
-        this.source = this.audioContext.createBufferSource();
-        this.source.buffer = this.audioBuffer;
-        this.source.loop = this.isLooping;
+        if(!this.source){
+            this.source = this.audioContext.createBufferSource();
+            this.source.buffer = this.audioBuffer;
+            this.source.loop = this.isLooping;
 
-        this.gainNode = this.audioContext.createGain();
-        this.gainNode.gain.value = document.getElementById("volumeSlider").value;
+            this.gainNode = this.audioContext.createGain();
+            this.gainNode.gain.value = document.getElementById("volumeSlider").value;
 
-        let outputNode = this.gainNode;
-        if(this.currentBand) {
-            const band = this.frequencyBands[this.currentBand];
-            this.filterNode = this.createBandpassFilter(band.low, band.high);
-            this.source.connect(this.filterNode.input);
-            this.filterNode.output.connect(this.gainNode);
-        } else {
             this.source.connect(this.gainNode);
+            this.gainNode.connect(this.analyser);
+            this.analyser.connect(this.audioContext.destination);
+
+            this.source.start(0,this.pauseTime);
+            this.startTime=this.audioContext.currentTime-this.pauseTime;
         }
 
-        this.gainNode.connect(this.analyser);
-        this.analyser.connect(this.audioContext.destination);
-        this.source.start(0);
+        this.updateFilter();
         this.isPlaying = true;
     }
 
     pause() {
-        if(this.audioContext && this.audioContext.state === "running"){
+        if(this.audioContext && this.audioContext.state==="running"){
+            this.pauseTime=this.audioContext.currentTime-this.startTime;
             this.audioContext.suspend();
             this.isPlaying = false;
         }
@@ -213,12 +227,13 @@ class EarTrainingTool {
             try{ this.source.stop(); } catch(e){}
             this.source = null;
         }
+        this.pauseTime=0;
         this.isPlaying = false;
     }
 
     resetBand(){
         this.currentBand = null;
-        if(this.isPlaying) this.play();
+        this.updateFilter();
     }
 
     changeVolume(e){
@@ -242,7 +257,7 @@ class EarTrainingTool {
                     this.checkQuizAnswer(key);
                 } else {
                     this.currentBand = key;
-                    if(this.isPlaying) this.play();
+                    this.updateFilter();
                 }
                 break;
             }
@@ -273,30 +288,31 @@ class EarTrainingTool {
             const band = this.frequencyBands[key];
             const x1 = this.frequencyToX(band.low, width);
             const x2 = this.frequencyToX(band.high, width);
-            ctx.fillStyle = (this.currentBand===key) ? band.color : band.color+'33';
+            ctx.fillStyle = (this.currentBand===key) ? band.color : band.color+'88';
             ctx.fillRect(x1, 0, x2-x1, height);
 
-            if(this.currentBand===key){
-                ctx.fillStyle='#fff';
-                ctx.font='14px Arial';
-                ctx.textAlign='center';
-                ctx.fillText(band.name, (x1+x2)/2, 20);
-            }
+            ctx.fillStyle='#fff';
+            ctx.font='12px Arial';
+            ctx.textAlign='center';
+            ctx.fillText(band.name, (x1+x2)/2, 20);
         }
 
-        // repères
-        [100,1000,10000].forEach(freq=>{
+        // repères logarithmiques type Pro-Q
+        const freqs=[20,50,100,200,500,1000,2000,5000,10000,20000];
+        ctx.strokeStyle="#444";
+        ctx.fillStyle="#aaa";
+        ctx.font="10px Arial";
+        ctx.textAlign="left";
+        freqs.forEach(freq=>{
             const x=this.frequencyToX(freq,width);
-            ctx.strokeStyle="#666";
             ctx.beginPath();
             ctx.moveTo(x,0);
             ctx.lineTo(x,height);
             ctx.stroke();
-            ctx.fillStyle="#aaa";
-            ctx.fillText(freq+"Hz",x+5,height-5);
+            ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz",x+2,height-5);
         });
 
-        // spectre lissé
+        // spectre
         ctx.beginPath();
         ctx.strokeStyle = '#4facfe';
         ctx.lineWidth = 2;
@@ -325,6 +341,7 @@ class EarTrainingTool {
         const keys = Object.keys(this.frequencyBands);
         this.quizBand = keys[Math.floor(Math.random()*keys.length)];
         this.currentBand = this.quizBand;
+        this.updateFilter();
         this.play();
         document.getElementById("quizMsg").textContent="🎧 Devine la bande jouée ! Clique sur le spectre.";
     }
@@ -337,7 +354,7 @@ class EarTrainingTool {
         }
         this.quizMode=false;
         this.currentBand=null;
-        this.play();
+        this.updateFilter();
     }
 }
 
