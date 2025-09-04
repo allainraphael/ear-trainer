@@ -2,177 +2,184 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Ear Training Tool - Bandes sur Spectre</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ear Training Tool - CNSMDP</title>
 <style>
-body { background:#222; color:#fff; font-family:Arial,sans-serif; text-align:center; margin:0; padding:20px;}
-canvas { display:block; margin:auto; background:#000; border-radius:10px; }
-.controls { margin-top:15px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
-.controls button { padding:10px 20px; border:none; border-radius:5px; background:linear-gradient(45deg,#4facfe,#00f2fe); color:#fff; cursor:pointer; font-size:1em;}
-.controls button.active { background:linear-gradient(45deg,#ff6b6b,#ffd93d); color:#000;}
-#volumeControl { margin-top:10px;}
+body { background: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+.container { max-width: 1000px; margin: 0 auto; }
+h1 { text-align: center; margin-bottom: 20px; }
+#spectrumContainer { position: relative; background: #000; height: 400px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
+.controls { margin-top: 10px; text-align: center; }
+button { padding: 8px 15px; margin: 0 5px; font-size: 1em; cursor: pointer; }
+input[type=file] { margin-bottom: 10px; }
+.volume-control { margin-top: 10px; text-align:center; }
 </style>
 </head>
 <body>
-
-<h1>Ear Training Tool</h1>
-<input type="file" id="fileInput" accept="audio/*">
-<canvas id="spectrum" width="900" height="300"></canvas>
-
-<div class="controls">
-    <button id="playBtn">▶️ Lecture</button>
-    <button id="pauseBtn">⏸️ Pause</button>
-    <button id="stopBtn">⏹️ Stop</button>
-    <button id="loopBtn">🔄 Boucle</button>
+<div class="container">
+<h1>Outil d'Ear Training - CNSMDP</h1>
+<input type="file" id="audioFile" accept="audio/*">
+<div id="spectrumContainer">
+<canvas id="spectrum"></canvas>
 </div>
 
-<div id="volumeControl">
+<div class="controls">
+<button id="playBtn">▶️ Lecture</button>
+<button id="pauseBtn">⏸️ Pause</button>
+<button id="stopBtn">⏹️ Stop</button>
+<button id="loopBtn">🔄 Boucle</button>
+</div>
+
+<div class="volume-control">
 🔊 Volume: <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
 <span id="volumeValue">70%</span>
+</div>
 </div>
 
 <script>
 const canvas = document.getElementById('spectrum');
 const ctx = canvas.getContext('2d');
+canvas.width = canvas.offsetWidth;
+canvas.height = canvas.offsetHeight;
 
-let audioCtx = null;
-let source = null;
-let analyser = null;
-let gainNode = null;
-let buffer = null;
-let isPlaying = false;
-let isLooping = false;
+let audioCtx, buffer, source, gainNode, analyser;
+let isPlaying=false, isLooping=false;
 let currentBand = null;
 
 const bands = [
-    {name:'Sub-Bass', low:20, high:60, color:'rgba(255,0,0,0.2)'},
-    {name:'Bass', low:60, high:250, color:'rgba(255,165,0,0.2)'},
-    {name:'Low-Mid', low:250, high:500, color:'rgba(255,255,0,0.2)'},
-    {name:'Mid', low:500, high:2000, color:'rgba(0,255,0,0.2)'},
-    {name:'High-Mid', low:2000, high:4000, color:'rgba(0,255,255,0.2)'},
-    {name:'Treble', low:4000, high:8000, color:'rgba(0,0,255,0.2)'},
-    {name:'High-Treble', low:8000, high:20000, color:'rgba(128,0,255,0.2)'}
+{ name:'Sub-Bass', low:20, high:60, color:'#ff0000' },
+{ name:'Bass', low:60, high:250, color:'#ff8000' },
+{ name:'Low-Mid', low:250, high:500, color:'#ffff00' },
+{ name:'Mid', low:500, high:2000, color:'#00ff00' },
+{ name:'High-Mid', low:2000, high:4000, color:'#00ffff' },
+{ name:'Treble', low:4000, high:8000, color:'#0080ff' },
+{ name:'High-Treble', low:8000, high:20000, color:'#8000ff' }
 ];
 
-function logX(freq){
-    return Math.log10(freq/20)/Math.log10(20000/20)*canvas.width;
+function freqToX(f){ 
+    const minLog=Math.log10(20), maxLog=Math.log10(20000);
+    return (Math.log10(f)-minLog)/(maxLog-minLog)*canvas.offsetWidth;
 }
-
-function setupAudio(){
-    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.8;
-}
-
-document.getElementById('fileInput').addEventListener('change', async (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    setupAudio();
-    const arrayBuffer = await file.arrayBuffer();
-    buffer = await audioCtx.decodeAudioData(arrayBuffer);
-    draw();
-});
-
-function play(){
-    if(!buffer) return;
-    stop();
-    source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = isLooping;
-
-    gainNode = audioCtx.createGain();
-    gainNode.gain.value = document.getElementById('volumeSlider').value;
-
-    let lastNode = source;
-
-    if(currentBand){
-        const band = currentBand;
-        const highpass = audioCtx.createBiquadFilter();
-        highpass.type='highpass'; highpass.frequency.value = band.low;
-        const lowpass = audioCtx.createBiquadFilter();
-        lowpass.type='lowpass'; lowpass.frequency.value = band.high;
-        lastNode.connect(highpass);
-        highpass.connect(lowpass);
-        lastNode = lowpass;
-    }
-
-    lastNode.connect(gainNode);
-    gainNode.connect(analyser);
-    analyser.connect(audioCtx.destination);
-    source.start();
-    isPlaying = true;
-    draw();
-}
-
-function pause(){ stop(); }
-function stop(){ if(source){ source.stop(); source=null; isPlaying=false; } }
-function toggleLoop(){ isLooping = !isLooping; document.getElementById('loopBtn').classList.toggle('active',isLooping); if(source) source.loop=isLooping; }
-function setVolume(val){ document.getElementById('volumeValue').textContent=Math.round(val*100)+'%'; if(gainNode) gainNode.gain.value=val; }
-
-document.getElementById('playBtn').addEventListener('click',play);
-document.getElementById('pauseBtn').addEventListener('click',pause);
-document.getElementById('stopBtn').addEventListener('click',stop);
-document.getElementById('loopBtn').addEventListener('click',toggleLoop);
-document.getElementById('volumeSlider').addEventListener('input', e=>setVolume(e.target.value));
-
-canvas.addEventListener('click', e=>{
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    currentBand = null;
-    for(const b of bands){
-        if(x>=logX(b.low) && x<=logX(b.high)){
-            currentBand=b;
-            break;
-        }
-    }
-    play();
-});
 
 function draw(){
     if(!analyser) return;
+    requestAnimationFrame(draw);
     const data = new Uint8Array(analyser.frequencyBinCount);
-    const height = canvas.height;
-    const width = canvas.width;
-    const nyquist = audioCtx.sampleRate/2;
+    analyser.getByteFrequencyData(data);
 
-    function loop(){
-        if(!isPlaying) return;
-        requestAnimationFrame(loop);
-        analyser.getByteFrequencyData(data);
+    // Fond noir du spectre
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        ctx.clearRect(0,0,width,height);
-        ctx.fillStyle='#000';
-        ctx.fillRect(0,0,width,height);
-
-        // Dessiner bandes transparentes
-        bands.forEach(b=>{
-            ctx.fillStyle = b.color;
-            ctx.fillRect(logX(b.low),0,logX(b.high)-logX(b.low),height);
-        });
-
-        // Dessiner spectre
-        ctx.beginPath();
-        ctx.strokeStyle='#0f0';
-        ctx.lineWidth=2;
-        for(let i=0;i<data.length;i++){
-            const freq = i*nyquist/data.length;
-            if(freq<20 || freq>20000) continue;
-            const x = logX(freq);
-            const y = height - (data[i]/255)*height;
-            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-        }
-        ctx.stroke();
-
-        // Dessiner labels fréquence
-        ctx.fillStyle='#fff';
-        ctx.font='10px Arial';
-        [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
-            const x = logX(f);
-            ctx.fillText(f>=1000?f/1000+'k':f, x, 10);
-        });
+    // Dessiner spectre
+    ctx.beginPath();
+    ctx.lineWidth=2; ctx.strokeStyle='#fff';
+    const sampleRate = audioCtx.sampleRate;
+    const nyquist = sampleRate/2;
+    const len = data.length;
+    for(let i=0;i<len;i++){
+        const freq = i*nyquist/len;
+        if(freq<20 || freq>20000) continue;
+        const x = freqToX(freq);
+        const amp = data[i]/255;
+        const y = canvas.height - amp*canvas.height;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
-    loop();
+    ctx.stroke();
+
+    // Dessiner bandes en transparence avec surbrillance
+    bands.forEach((b,i)=>{
+        const x1=freqToX(b.low), x2=freqToX(b.high);
+        if(i===currentBand){
+            // Gradient vertical pour effet lumineux
+            const grad = ctx.createLinearGradient(0,0,0,canvas.height);
+            grad.addColorStop(0, b.color+'cc');
+            grad.addColorStop(0.5, b.color+'99');
+            grad.addColorStop(1, b.color+'cc');
+            ctx.fillStyle = grad;
+        } else {
+            ctx.fillStyle = b.color+'33';
+        }
+        ctx.fillRect(x1,0,x2-x1,canvas.height);
+    });
+
+    // Graduations logarithmiques
+    ctx.fillStyle='#fff';
+    ctx.font='12px Arial';
+    ctx.textAlign='center';
+    const logTicks = [20,50,100,200,500,1000,2000,5000,10000,20000];
+    logTicks.forEach(f=>{
+        const x=freqToX(f);
+        ctx.fillRect(x,canvas.height-5,1,5);
+        ctx.fillText(f, x, canvas.height-7);
+    });
 }
+
+// Sélection d’une bande au clic
+canvas.addEventListener('click', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const xClick = e.clientX - rect.left;
+    const freqClick = 10**(Math.log10(20) + xClick/canvas.width*(Math.log10(20000)-Math.log10(20)));
+    currentBand = bands.findIndex(b => freqClick>=b.low && freqClick<=b.high);
+    stop(); play();
+});
+
+// Gestion fichier audio
+document.getElementById('audioFile').addEventListener('change',async e=>{
+    if(!e.target.files[0]) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await e.target.files[0].arrayBuffer();
+    buffer = await audioCtx.decodeAudioData(arrayBuffer);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize=2048;
+    draw();
+});
+
+// Contrôles lecture
+document.getElementById('playBtn').addEventListener('click',play);
+document.getElementById('pauseBtn').addEventListener('click',stop);
+document.getElementById('stopBtn').addEventListener('click',stop);
+document.getElementById('loopBtn').addEventListener('click',()=>{
+    isLooping = !isLooping;
+    document.getElementById('loopBtn').textContent = isLooping?'🔄 Boucle ON':'🔄 Boucle';
+});
+
+// Volume
+document.getElementById('volumeSlider').addEventListener('input',e=>{
+    document.getElementById('volumeValue').textContent = Math.round(e.target.value*100)+'%';
+    if(gainNode) gainNode.gain.value=e.target.value;
+});
+
+// Lecture audio
+function play(){
+    if(!buffer) return; stop();
+    source = audioCtx.createBufferSource();
+    source.buffer=buffer;
+    source.loop=isLooping;
+
+    gainNode=audioCtx.createGain();
+    gainNode.gain.value=document.getElementById('volumeSlider').value;
+
+    let lastNode = source;
+
+    if(currentBand!==null){
+        const b = bands[currentBand];
+        const hp1=audioCtx.createBiquadFilter(); hp1.type='highpass'; hp1.frequency.value=b.low;
+        const hp2=audioCtx.createBiquadFilter(); hp2.type='highpass'; hp2.frequency.value=b.low;
+        const lp1=audioCtx.createBiquadFilter(); lp1.type='lowpass'; lp1.frequency.value=b.high;
+        const lp2=audioCtx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=b.high;
+        lastNode.connect(hp1); hp1.connect(hp2); hp2.connect(lp1); lp1.connect(lp2);
+        lastNode = lp2;
+    }
+
+    lastNode.connect(gainNode); gainNode.connect(analyser); analyser.connect(audioCtx.destination);
+    source.start(); isPlaying=true;
+}
+
+// Stop audio
+function stop(){ if(source){ source.stop(); source=null; isPlaying=false; }}
+window.addEventListener('resize',()=>{ canvas.width=canvas.offsetWidth; canvas.height=canvas.offsetHeight; draw(); });
 </script>
 </body>
 </html>
