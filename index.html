@@ -2,30 +2,21 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ear Training Tool - Bande Superposée</title>
+<title>Ear Training Tool - Bandes sur Spectre</title>
 <style>
-body { font-family: Arial, sans-serif; background:#222; color:#fff; text-align:center; padding:20px; }
-#spectrumContainer { position: relative; width: 100%; max-width:900px; height:300px; margin: auto; background:#000; border-radius:10px; }
-canvas { width:100%; height:100%; display:block; border-radius:10px; }
-#bandButtonsContainer { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
-.freq-band-btn { position:absolute; top:0; height:100%; pointer-events:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.8em; transition: background 0.3s; border-radius:5px 5px 0 0; }
-.freq-band-btn.active { background: rgba(255,255,255,0.4); color:#000; font-weight:bold; }
-.controls { margin-top:10px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; z-index:10; position: relative; }
-.controls button { padding:10px 20px; border:none; border-radius:5px; background:linear-gradient(45deg,#4facfe,#00f2fe); color:#fff; cursor:pointer; font-size:1em; }
-.controls button.active { background:linear-gradient(45deg,#ff6b6b,#ffd93d); color:#000; }
-#fileInput { margin-bottom:10px; }
-#volumeControl { margin-top:10px; }
+body { background:#222; color:#fff; font-family:Arial,sans-serif; text-align:center; margin:0; padding:20px;}
+canvas { display:block; margin:auto; background:#000; border-radius:10px; }
+.controls { margin-top:15px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+.controls button { padding:10px 20px; border:none; border-radius:5px; background:linear-gradient(45deg,#4facfe,#00f2fe); color:#fff; cursor:pointer; font-size:1em;}
+.controls button.active { background:linear-gradient(45deg,#ff6b6b,#ffd93d); color:#000;}
+#volumeControl { margin-top:10px;}
 </style>
 </head>
 <body>
 
 <h1>Ear Training Tool</h1>
 <input type="file" id="fileInput" accept="audio/*">
-<div id="spectrumContainer">
-    <canvas id="spectrum"></canvas>
-    <div id="bandButtonsContainer"></div>
-</div>
+<canvas id="spectrum" width="900" height="300"></canvas>
 
 <div class="controls">
     <button id="playBtn">▶️ Lecture</button>
@@ -35,190 +26,153 @@ canvas { width:100%; height:100%; display:block; border-radius:10px; }
 </div>
 
 <div id="volumeControl">
-    🔊 Volume: <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
-    <span id="volumeValue">70%</span>
+🔊 Volume: <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.7">
+<span id="volumeValue">70%</span>
 </div>
 
 <script>
-class EarTrainingTool {
-    constructor() {
-        this.audioContext = null;
-        this.audioBuffer = null;
-        this.source = null;
-        this.gainNode = null;
-        this.analyser = null;
-        this.isPlaying = false;
-        this.isLooping = false;
-        this.currentBand = null;
+const canvas = document.getElementById('spectrum');
+const ctx = canvas.getContext('2d');
 
-        this.canvas = document.getElementById('spectrum');
-        this.ctx = this.canvas.getContext('2d');
+let audioCtx = null;
+let source = null;
+let analyser = null;
+let gainNode = null;
+let buffer = null;
+let isPlaying = false;
+let isLooping = false;
+let currentBand = null;
 
-        this.bands = {
-            'Sub-Bass': { low: 20, high: 60, color:'rgba(255,0,0,0.2)' },
-            'Bass': { low: 60, high: 250, color:'rgba(255,165,0,0.2)' },
-            'Low-Mid': { low: 250, high: 500, color:'rgba(255,255,0,0.2)' },
-            'Mid': { low: 500, high: 2000, color:'rgba(0,255,0,0.2)' },
-            'High-Mid': { low: 2000, high: 4000, color:'rgba(0,255,255,0.2)' },
-            'Treble': { low: 4000, high: 8000, color:'rgba(0,0,255,0.2)' },
-            'High-Treble': { low: 8000, high: 20000, color:'rgba(128,0,255,0.2)' }
-        };
+const bands = [
+    {name:'Sub-Bass', low:20, high:60, color:'rgba(255,0,0,0.2)'},
+    {name:'Bass', low:60, high:250, color:'rgba(255,165,0,0.2)'},
+    {name:'Low-Mid', low:250, high:500, color:'rgba(255,255,0,0.2)'},
+    {name:'Mid', low:500, high:2000, color:'rgba(0,255,0,0.2)'},
+    {name:'High-Mid', low:2000, high:4000, color:'rgba(0,255,255,0.2)'},
+    {name:'Treble', low:4000, high:8000, color:'rgba(0,0,255,0.2)'},
+    {name:'High-Treble', low:8000, high:20000, color:'rgba(128,0,255,0.2)'}
+];
 
-        this.setupCanvas();
-        this.addEventListeners();
-    }
-
-    setupCanvas() {
-        this.canvas.width = this.canvas.offsetWidth * window.devicePixelRatio;
-        this.canvas.height = this.canvas.offsetHeight * window.devicePixelRatio;
-        this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    }
-
-    addEventListeners() {
-        document.getElementById('fileInput').addEventListener('change', e => this.loadFile(e));
-        document.getElementById('playBtn').addEventListener('click', () => this.play());
-        document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
-        document.getElementById('stopBtn').addEventListener('click', () => this.stop());
-        document.getElementById('loopBtn').addEventListener('click', () => this.toggleLoop());
-        document.getElementById('volumeSlider').addEventListener('input', e => this.setVolume(e.target.value));
-        window.addEventListener('resize', () => { this.setupCanvas(); this.createBandButtons(); });
-    }
-
-    async loadFile(event) {
-        const file = event.target.files[0];
-        if(!file) return;
-        try {
-            if(!this.audioContext) this.audioContext = new (window.AudioContext||window.webkitAudioContext)();
-            const arrayBuffer = await file.arrayBuffer();
-            this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            this.setupAnalyser();
-            this.createBandButtons();
-        } catch(e) { alert('Erreur audio'); console.error(e); }
-    }
-
-    setupAnalyser() {
-        this.analyser = this.audioContext.createAnalyser();
-        this.analyser.fftSize = 2048;
-        this.analyser.smoothingTimeConstant = 0.8;
-    }
-
-    play() {
-        if(!this.audioBuffer) return;
-        this.stop();
-
-        this.source = this.audioContext.createBufferSource();
-        this.source.buffer = this.audioBuffer;
-        this.source.loop = this.isLooping;
-
-        this.gainNode = this.audioContext.createGain();
-        this.gainNode.gain.value = document.getElementById('volumeSlider').value;
-
-        let lastNode = this.source;
-
-        if(this.currentBand){
-            const band = this.bands[this.currentBand];
-            const highpass = this.audioContext.createBiquadFilter();
-            highpass.type='highpass'; highpass.frequency.value = band.low;
-            const lowpass = this.audioContext.createBiquadFilter();
-            lowpass.type='lowpass'; lowpass.frequency.value = band.high;
-            lastNode.connect(highpass); highpass.connect(lowpass); lastNode = lowpass;
-        }
-
-        lastNode.connect(this.gainNode);
-        this.gainNode.connect(this.analyser);
-        this.analyser.connect(this.audioContext.destination);
-        this.source.start();
-        this.isPlaying = true;
-        this.visualize();
-    }
-
-    pause(){ this.stop(); }
-    stop(){ if(this.source){ this.source.stop(); this.source=null; this.isPlaying=false; } }
-    toggleLoop(){
-        this.isLooping = !this.isLooping;
-        document.getElementById('loopBtn').classList.toggle('active', this.isLooping);
-        if(this.source) this.source.loop = this.isLooping;
-    }
-
-    setVolume(val){ document.getElementById('volumeValue').textContent=Math.round(val*100)+'%'; if(this.gainNode)this.gainNode.gain.value=val; }
-
-    createBandButtons(){
-        const container = document.getElementById('bandButtonsContainer');
-        container.innerHTML='';
-        const width = container.offsetWidth;
-        const height = container.offsetHeight;
-
-        Object.keys(this.bands).forEach(name=>{
-            const b = this.bands[name];
-            const btn = document.createElement('div');
-            btn.classList.add('freq-band-btn');
-
-            // Calcul logarithmique
-            const x1 = Math.log10(b.low/20)/Math.log10(20000/20)*width;
-            const x2 = Math.log10(b.high/20)/Math.log10(20000/20)*width;
-
-            btn.style.left = x1+'px';
-            btn.style.width = (x2-x1)+'px';
-            btn.style.height = (height-0)+'px';
-            btn.style.background = b.color;
-            btn.textContent = name;
-
-            btn.addEventListener('click', ()=>{
-                this.currentBand = this.currentBand===name?null:name;
-                Array.from(container.children).forEach(c=>c.classList.remove('active'));
-                if(this.currentBand) btn.classList.add('active');
-                this.play();
-            });
-
-            container.appendChild(btn);
-        });
-    }
-
-    visualize(){
-        if(!this.analyser) return;
-        const ctx=this.ctx,canvas=this.canvas;
-        const width=canvas.offsetWidth, height=canvas.offsetHeight;
-        const dataArray=new Uint8Array(this.analyser.frequencyBinCount);
-        const draw=()=>{
-            if(!this.isPlaying) return;
-            requestAnimationFrame(draw);
-            this.analyser.getByteFrequencyData(dataArray);
-
-            ctx.clearRect(0,0,width,height);
-
-            // Fond noir
-            ctx.fillStyle='#000';
-            ctx.fillRect(0,0,width,height);
-
-            // Spectre
-            ctx.beginPath();
-            ctx.strokeStyle='#0f0';
-            ctx.lineWidth=2;
-            const nyquist=this.audioContext.sampleRate/2;
-            for(let i=0;i<dataArray.length;i++){
-                const freq=(i*nyquist)/dataArray.length;
-                if(freq<20||freq>20000) continue;
-                const x=Math.log10(freq/20)/Math.log10(20000/20)*width;
-                const y=height-(dataArray[i]/255)*height;
-                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-            }
-            ctx.stroke();
-
-            // Axes fréquences
-            ctx.fillStyle='#fff';
-            ctx.font='10px Arial';
-            [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
-                const x=Math.log10(f/20)/Math.log10(20000/20)*width;
-                const label=f>=1000?f/1000+'k':f;
-                ctx.fillText(label,x,10);
-            });
-        };
-        draw();
-    }
+function logX(freq){
+    return Math.log10(freq/20)/Math.log10(20000/20)*canvas.width;
 }
 
-const tool = new EarTrainingTool();
-</script>
+function setupAudio(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.8;
+}
 
+document.getElementById('fileInput').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    setupAudio();
+    const arrayBuffer = await file.arrayBuffer();
+    buffer = await audioCtx.decodeAudioData(arrayBuffer);
+    draw();
+});
+
+function play(){
+    if(!buffer) return;
+    stop();
+    source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = isLooping;
+
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = document.getElementById('volumeSlider').value;
+
+    let lastNode = source;
+
+    if(currentBand){
+        const band = currentBand;
+        const highpass = audioCtx.createBiquadFilter();
+        highpass.type='highpass'; highpass.frequency.value = band.low;
+        const lowpass = audioCtx.createBiquadFilter();
+        lowpass.type='lowpass'; lowpass.frequency.value = band.high;
+        lastNode.connect(highpass);
+        highpass.connect(lowpass);
+        lastNode = lowpass;
+    }
+
+    lastNode.connect(gainNode);
+    gainNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    source.start();
+    isPlaying = true;
+    draw();
+}
+
+function pause(){ stop(); }
+function stop(){ if(source){ source.stop(); source=null; isPlaying=false; } }
+function toggleLoop(){ isLooping = !isLooping; document.getElementById('loopBtn').classList.toggle('active',isLooping); if(source) source.loop=isLooping; }
+function setVolume(val){ document.getElementById('volumeValue').textContent=Math.round(val*100)+'%'; if(gainNode) gainNode.gain.value=val; }
+
+document.getElementById('playBtn').addEventListener('click',play);
+document.getElementById('pauseBtn').addEventListener('click',pause);
+document.getElementById('stopBtn').addEventListener('click',stop);
+document.getElementById('loopBtn').addEventListener('click',toggleLoop);
+document.getElementById('volumeSlider').addEventListener('input', e=>setVolume(e.target.value));
+
+canvas.addEventListener('click', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    currentBand = null;
+    for(const b of bands){
+        if(x>=logX(b.low) && x<=logX(b.high)){
+            currentBand=b;
+            break;
+        }
+    }
+    play();
+});
+
+function draw(){
+    if(!analyser) return;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const height = canvas.height;
+    const width = canvas.width;
+    const nyquist = audioCtx.sampleRate/2;
+
+    function loop(){
+        if(!isPlaying) return;
+        requestAnimationFrame(loop);
+        analyser.getByteFrequencyData(data);
+
+        ctx.clearRect(0,0,width,height);
+        ctx.fillStyle='#000';
+        ctx.fillRect(0,0,width,height);
+
+        // Dessiner bandes transparentes
+        bands.forEach(b=>{
+            ctx.fillStyle = b.color;
+            ctx.fillRect(logX(b.low),0,logX(b.high)-logX(b.low),height);
+        });
+
+        // Dessiner spectre
+        ctx.beginPath();
+        ctx.strokeStyle='#0f0';
+        ctx.lineWidth=2;
+        for(let i=0;i<data.length;i++){
+            const freq = i*nyquist/data.length;
+            if(freq<20 || freq>20000) continue;
+            const x = logX(freq);
+            const y = height - (data[i]/255)*height;
+            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+
+        // Dessiner labels fréquence
+        ctx.fillStyle='#fff';
+        ctx.font='10px Arial';
+        [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
+            const x = logX(f);
+            ctx.fillText(f>=1000?f/1000+'k':f, x, 10);
+        });
+    }
+    loop();
+}
+</script>
 </body>
 </html>
