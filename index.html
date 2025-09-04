@@ -8,10 +8,8 @@
 body { background: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
 .container { max-width: 1000px; margin: 0 auto; }
 h1 { text-align: center; margin-bottom: 20px; }
-#spectrumContainer { position: relative; background: #fff; height: 400px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
-canvas { width: 100%; height: 100%; display: block; }
-.band-btn { position: absolute; bottom: 0; cursor: pointer; opacity: 0.3; color: #fff; border: none; font-weight: bold; border-radius: 3px; }
-.band-btn.active { opacity: 0.7; }
+#spectrumContainer { position: relative; background: #000; height: 400px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
 .controls { margin-top: 10px; text-align: center; }
 button { padding: 8px 15px; margin: 0 5px; font-size: 1em; cursor: pointer; }
 input[type=file] { margin-bottom: 10px; }
@@ -49,7 +47,6 @@ let audioCtx, buffer, source, gainNode, analyser;
 let isPlaying=false, isLooping=false;
 let currentBand = null;
 
-// Définition des bandes
 const bands = [
 { name:'Sub-Bass', low:20, high:60, color:'#ff0000' },
 { name:'Bass', low:60, high:250, color:'#ff8000' },
@@ -59,34 +56,6 @@ const bands = [
 { name:'Treble', low:4000, high:8000, color:'#0080ff' },
 { name:'High-Treble', low:8000, high:20000, color:'#8000ff' }
 ];
-
-// Création des boutons bande superposés
-const spectrumContainer = document.getElementById('spectrumContainer');
-bands.forEach((b,i)=>{
-    const btn = document.createElement('button');
-    btn.classList.add('band-btn');
-    btn.dataset.index=i;
-    btn.textContent=b.name;
-    spectrumContainer.appendChild(btn);
-    btn.addEventListener('click',()=>{
-        currentBand = currentBand===i?null:i;
-        document.querySelectorAll('.band-btn').forEach((b2,j)=>{
-            b2.classList.toggle('active', j===currentBand);
-        });
-        stop(); play();
-    });
-});
-
-function updateBandButtons(){
-    const width = canvas.offsetWidth;
-    bands.forEach((b,i)=>{
-        const x1 = freqToX(b.low); const x2 = freqToX(b.high);
-        const btn = spectrumContainer.querySelectorAll('.band-btn')[i];
-        btn.style.left = x1+'px';
-        btn.style.width = (x2-x1)+'px';
-        btn.style.height = '40px';
-    });
-}
 
 function freqToX(f){ 
     const minLog=Math.log10(20), maxLog=Math.log10(20000);
@@ -99,13 +68,13 @@ function draw(){
     const data = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(data);
 
-    // Fond blanc
-    ctx.fillStyle = '#fff';
+    // Fond noir du spectre
+    ctx.fillStyle = '#000';
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     // Dessiner spectre
     ctx.beginPath();
-    ctx.lineWidth=2; ctx.strokeStyle='#000';
+    ctx.lineWidth=2; ctx.strokeStyle='#fff';
     const sampleRate = audioCtx.sampleRate;
     const nyquist = sampleRate/2;
     const len = data.length;
@@ -119,15 +88,24 @@ function draw(){
     }
     ctx.stroke();
 
-    // Dessiner bandes en transparence
+    // Dessiner bandes en transparence avec surbrillance
     bands.forEach((b,i)=>{
-        ctx.fillStyle = b.color+'55';
         const x1=freqToX(b.low), x2=freqToX(b.high);
+        if(i===currentBand){
+            // Gradient vertical pour effet lumineux
+            const grad = ctx.createLinearGradient(0,0,0,canvas.height);
+            grad.addColorStop(0, b.color+'cc');
+            grad.addColorStop(0.5, b.color+'99');
+            grad.addColorStop(1, b.color+'cc');
+            ctx.fillStyle = grad;
+        } else {
+            ctx.fillStyle = b.color+'33';
+        }
         ctx.fillRect(x1,0,x2-x1,canvas.height);
     });
 
-    // Dessiner graduations logarithmiques
-    ctx.fillStyle='#000';
+    // Graduations logarithmiques
+    ctx.fillStyle='#fff';
     ctx.font='12px Arial';
     ctx.textAlign='center';
     const logTicks = [20,50,100,200,500,1000,2000,5000,10000,20000];
@@ -136,9 +114,16 @@ function draw(){
         ctx.fillRect(x,canvas.height-5,1,5);
         ctx.fillText(f, x, canvas.height-7);
     });
-
-    updateBandButtons();
 }
+
+// Sélection d’une bande au clic
+canvas.addEventListener('click', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const xClick = e.clientX - rect.left;
+    const freqClick = 10**(Math.log10(20) + xClick/canvas.width*(Math.log10(20000)-Math.log10(20)));
+    currentBand = bands.findIndex(b => freqClick>=b.low && freqClick<=b.high);
+    stop(); play();
+});
 
 // Gestion fichier audio
 document.getElementById('audioFile').addEventListener('change',async e=>{
