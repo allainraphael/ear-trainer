@@ -166,10 +166,44 @@ class AudioApp {
   startQuiz(){
     const keys = Object.keys(this.frequencyBands);
     const random = keys[Math.floor(Math.random()*keys.length)];
-    this.currentBand = random;
-    if(this.isPlaying) this.play();
+    this.quizBand = random;
+    this.currentBand = null;
+    if(this.isPlaying){
+      this.source.stop();
+      this.pauseTime = this.audioContext.currentTime - this.startTime;
+    }
+    this.playQuizBand();
     document.getElementById("quizMessage").textContent =
-      "🎯 Quelle est cette bande ? (" + this.frequencyBands[random].name + ")";
+      "🎯 Devinez quelle bande est jouée ! Cliquez sur la bande correspondante.";
+  }
+
+  playQuizBand(){
+    if(!this.buffer) return;
+
+    if(this.source){
+      try{ this.source.stop(); }catch(e){}
+      this.source.disconnect();
+    }
+
+    this.source = this.audioContext.createBufferSource();
+    this.source.buffer = this.buffer;
+    this.source.loop = this.isLooping;
+
+    const band = this.frequencyBands[this.quizBand];
+    const filter = this.audioContext.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = Math.sqrt(band.low*band.high);
+    filter.Q.value = filter.frequency.value/(band.high-band.low);
+
+    this.source.connect(filter);
+    filter.connect(this.gainNode);
+    this.filterNode = filter;
+
+    this.startTime = this.audioContext.currentTime - this.pauseTime;
+    this.source.start(0,this.pauseTime);
+    this.isPlaying = true;
+
+    if(!this.animationId) this.animate();
   }
 
   frequencyToX(freq,width){
