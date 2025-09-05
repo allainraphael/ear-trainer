@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Ear Training</title>
+<title>Ear Training Amélioré</title>
 <style>
 body { background:#111; color:white; font-family:Arial; text-align:center; }
 canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radius:12px; cursor:pointer; }
@@ -11,7 +11,7 @@ button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:p
 </style>
 </head>
 <body>
-<h1>Ear Training</h1>
+<h1>Ear Training Amélioré</h1>
 <input type="file" id="fileInput" accept="audio/*"><br>
 <button id="playBtn">▶️ Play/Pause</button>
 <button id="loopBtn" class="active">🔁 Boucle ON</button>
@@ -61,6 +61,7 @@ class AudioApp {
     this.resizeCanvas();
     window.addEventListener("resize",()=>this.resizeCanvas());
     this.canvas.addEventListener("click",(e)=>this.handleCanvasClick(e));
+    this.animationId = null;
   }
 
   bindEvents(){
@@ -103,7 +104,7 @@ class AudioApp {
     if(!this.buffer) return;
 
     if(this.source){
-      this.source.stop();
+      try { this.source.stop(); } catch(e){}
       this.source.disconnect();
     }
 
@@ -115,6 +116,7 @@ class AudioApp {
       this.filterNode.disconnect();
       this.filterNode = null;
     }
+
     if(this.currentBand){
       const band = this.frequencyBands[this.currentBand];
       const filter = this.audioContext.createBiquadFilter();
@@ -131,15 +133,17 @@ class AudioApp {
     this.startTime = this.audioContext.currentTime - this.pauseTime;
     this.source.start(0,this.pauseTime);
     this.isPlaying = true;
-    this.animate();
+
+    if(!this.animationId) this.animate();
   }
 
   togglePlay(){
     if(!this.isPlaying){ this.play(); }
     else{
-      this.source.stop();
+      if(this.source) this.source.stop();
       this.pauseTime = this.audioContext.currentTime - this.startTime;
       this.isPlaying = false;
+      if(this.animationId) { cancelAnimationFrame(this.animationId); this.animationId=null; }
     }
   }
 
@@ -147,6 +151,7 @@ class AudioApp {
     this.isLooping = !this.isLooping;
     this.loopBtn.classList.toggle("active", this.isLooping);
     this.loopBtn.textContent = this.isLooping ? "🔁 Boucle ON" : "🔁 Boucle OFF";
+    if(this.source) this.source.loop = this.isLooping;
   }
 
   setVolume(val){
@@ -155,22 +160,14 @@ class AudioApp {
 
   resetBand(){
     this.currentBand = null;
-    if(this.isPlaying){
-      this.source.stop();
-      this.pauseTime = this.audioContext.currentTime - this.startTime;
-      this.play();
-    }
+    if(this.isPlaying) this.play();
   }
 
   startQuiz(){
     const keys = Object.keys(this.frequencyBands);
     const random = keys[Math.floor(Math.random()*keys.length)];
     this.currentBand = random;
-    if(this.isPlaying){
-      this.source.stop();
-      this.pauseTime = this.audioContext.currentTime - this.startTime;
-      this.play();
-    }
+    if(this.isPlaying) this.play();
     document.getElementById("quizMessage").textContent =
       "🎯 Quelle est cette bande ? (" + this.frequencyBands[random].name + ")";
   }
@@ -183,7 +180,13 @@ class AudioApp {
   }
 
   dbToY(db,height){
-    const minDb=-100, maxDb=20;
+    const maxDb = 20;
+    let minDb = -100;
+    // Ajustement dynamique minDb
+    if(this.floatData){
+      let minVal = Math.min(...this.floatData);
+      if(minVal > -100) minDb = Math.floor(minVal/10)*10;
+    }
     const ratio=(db-minDb)/(maxDb-minDb);
     return height - (ratio*height);
   }
@@ -199,11 +202,7 @@ class AudioApp {
       const x2 = this.frequencyToX(band.high,width);
       if(x >= x1 && x <= x2){
         this.currentBand = key;
-        if(this.isPlaying){
-          this.source.stop();
-          this.pauseTime = this.audioContext.currentTime - this.startTime;
-          this.play();
-        }
+        if(this.isPlaying) this.play();
         break;
       }
     }
@@ -244,7 +243,7 @@ class AudioApp {
       ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
     }
 
-    // repères Hz
+    // repères Hz logarithmiques
     const freqs = [20,50,100,200,500,1000,2000,5000,10000,20000];
     ctx.fillStyle="#aaa";
     ctx.font="10px Arial";
@@ -270,7 +269,8 @@ class AudioApp {
   }
 
   animate(){
-    requestAnimationFrame(()=>this.animate());
+    if(!this.isPlaying) { this.animationId = null; return; }
+    this.animationId = requestAnimationFrame(()=>this.animate());
     this.drawSpectrum();
   }
 }
