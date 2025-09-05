@@ -226,18 +226,30 @@ class AudioApp {
   }
 
   handleCanvasClick(e){
-    const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = this.canvas.width;
+  const rect = this.canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const width = this.canvas.width;
 
-    for(const key in this.frequencyBands){
-      const band = this.frequencyBands[key];
-      const x1 = this.frequencyToX(band.low,width);
-      const x2 = this.frequencyToX(band.high,width);
-      if(x >= x1 && x <= x2){
+  for(const key in this.frequencyBands){
+    const band = this.frequencyBands[key];
+    const x1 = this.frequencyToX(band.low,width);
+    const x2 = this.frequencyToX(band.high,width);
+    if(x >= x1 && x <= x2){
+      if(this.quizBand){ // mode quiz
+        const correctName = this.frequencyBands[this.quizBand].name;
+        if(key === this.quizBand){
+          document.getElementById("quizMessage").textContent = "✅ Bonne réponse ! C'était " + correctName;
+        } else {
+          document.getElementById("quizMessage").textContent =
+            "❌ Mauvaise réponse ! C'était " + correctName;
+        }
+        this.quizBand = null;
+        this.resetBand();
+      } else { // mode normal
         this.currentBand = key;
         if(this.isPlaying) this.play();
-        break;
+      }
+      break;
       }
     }
   }
