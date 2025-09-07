@@ -338,38 +338,36 @@ class AudioApp {
   }
 
   handleCanvasClick(e){
-    if(!this.quizBand) return;
-
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const width = this.canvas.width;
 
     for(const key in this.frequencyBands){
-      const band = this.frequencyBands[key];
-      const x1 = this.frequencyToX(band.low,width);
-      const x2 = this.frequencyToX(band.high,width);
-      if(x >= x1 && x <= x2){
-        const correct = this.quizBand;
+        const band = this.frequencyBands[key];
+        const x1 = this.frequencyToX(band.low,width);
+        const x2 = this.frequencyToX(band.high,width);
+        if(x >= x1 && x <= x2){
+            if(this.quizActive && this.quizBand){ 
+                // --- mode quiz ---
+                const correct = this.quizBand;
+                if(key === correct){ this.quizScore++; this.showMessage(`✅ Bonne réponse ! C'était ${this.frequencyBands[correct].name}`);}
+                else { this.showMessage(`❌ Mauvaise réponse ! C'était ${this.frequencyBands[correct].name}`); }
 
-        if(key === correct){
-          this.quizScore++;
-          this.showMessage(`✅ Bonne réponse ! C'était ${this.frequencyBands[correct].name}`);
-        } else {
-          this.showMessage(`❌ Mauvaise réponse ! C'était ${this.frequencyBands[correct].name}`);
+                this.addResult(this.quizCount,key,correct);
+                this.highlightBand = this.quizBand;
+                this.quizBand = null;
+                this.playHighlightBand(this.highlightBand); // lecture filtrée
+
+                setTimeout(()=>this.startQuiz(),2000);
+            } else { 
+                // --- mode libre ---
+                this.currentBand = key;    // << allume visuellement la bande
+                if(this.isPlaying) this.play();  // relance lecture avec filtre
+            }
+            break;
         }
-
-        this.addResult(this.quizCount, key, correct);
-        this.highlightBand = correct;
-        this.quizBand = null;
-
-        // lecture filtrée de la bande correcte
-        this.playHighlightBand(correct,1500);
-
-        setTimeout(()=>this.startQuiz(), 1600); // léger délai après écoute filtrée
-        break;
-      }
     }
-  }
+}
 
   quitQuiz(){
     this.quizActive=false;
