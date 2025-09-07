@@ -8,6 +8,15 @@ body { background:#111; color:white; font-family:Arial; text-align:center; }
 canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radius:12px; cursor:pointer; }
 button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; }
 .active { background:#4facfe; color:white; }
+#resultsTable { margin:20px auto; border-collapse:collapse; width:80%; max-width:700px; }
+#resultsTable th, #resultsTable td { border:1px solid #555; padding:8px; }
+#resultsTable th { background:#222; }
+.correct { color:lime; font-weight:bold; }
+.incorrect { color:red; font-weight:bold; }
+#replayBtn { display:none; margin-top:15px; background:#4caf50; color:white; }
+/* barre de progression */
+#progressContainer { width:80%; max-width:600px; height:20px; background:#333; border-radius:10px; margin:15px auto; overflow:hidden; display:none; }
+#progressBar { height:100%; width:0%; background:#4facfe; transition:width 0.5s ease; }
 </style>
 </head>
 <body>
@@ -19,9 +28,26 @@ button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:p
 <button id="quizBtn">🎯 Quiz</button>
 <br>
 <label>Volume : <input type="range" id="volume" min="0" max="2" value="1" step="0.01"></label>
-<br>
+
+<!-- barre de progression -->
+<div id="progressContainer">
+  <div id="progressBar"></div>
+</div>
+
 <canvas id="analyser"></canvas>
 <p id="quizMessage"></p>
+<table id="resultsTable" style="display:none;">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Ta réponse</th>
+      <th>Bonne réponse</th>
+      <th>Résultat</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<button id="replayBtn">🔁 Rejouer la série</button>
 
 <script>
 class AudioApp {
@@ -31,10 +57,15 @@ class AudioApp {
     this.loopBtn = document.getElementById("loopBtn");
     this.resetBtn = document.getElementById("resetBtn");
     this.quizBtn = document.getElementById("quizBtn");
+    this.replayBtn = document.getElementById("replayBtn");
     this.volumeSlider = document.getElementById("volume");
     this.canvas = document.getElementById("analyser");
     this.ctx = this.canvas.getContext("2d");
     this.quizMessage = document.getElementById("quizMessage");
+    this.resultsTable = document.getElementById("resultsTable");
+    this.resultsBody = this.resultsTable.querySelector("tbody");
+    this.progressContainer = document.getElementById("progressContainer");
+    this.progressBar = document.getElementById("progressBar");
 
     this.audioContext = null;
     this.source = null;
@@ -49,7 +80,13 @@ class AudioApp {
 
     this.currentBand = null;
     this.quizBand = null;
-    this.highlightBand = null; // pour mise en valeur visuelle
+    this.highlightBand = null;
+
+    // suivi du quiz
+    this.quizActive = false;
+    this.quizCount = 0;
+    this.quizScore = 0;
+    this.totalQuestions = 10;
 
     this.frequencyBands = {
       sub:{low:20,high:60,color:'rgba(255,0,0,0.5)',name:'Sub'},
@@ -73,7 +110,8 @@ class AudioApp {
     this.playBtn.addEventListener("click", ()=>this.togglePlay());
     this.loopBtn.addEventListener("click", ()=>this.toggleLoop());
     this.resetBtn.addEventListener("click", ()=>this.resetBand());
-    this.quizBtn.addEventListener("click", ()=>this.startQuiz());
+    this.quizBtn.addEventListener("click", ()=>this.startQuizSeries());
+    this.replayBtn.addEventListener("click", ()=>this.startQuizSeries());
     this.volumeSlider.addEventListener("input", ()=>this.setVolume(this.volumeSlider.value));
   }
 
@@ -171,7 +209,27 @@ class AudioApp {
     if(this.isPlaying) this.play();
   }
 
+  startQuizSeries(){
+    this.quizActive = true;
+    this.quizCount = 0;
+    this.quizScore = 0;
+    this.resultsBody.innerHTML = "";
+    this.resultsTable.style.display = "table";
+    this.replayBtn.style.display = "none";
+    this.progressContainer.style.display = "block";
+    this.progressBar.style.width = "0%";
+    this.startQuiz();
+  }
+
   startQuiz(){
+    if(this.quizCount >= this.totalQuestions){
+      this.quizActive = false;
+      this.showMessage(`🏆 Série terminée ! Score : ${this.quizScore}/${this.totalQuestions}`);
+      this.replayBtn.style.display = "inline-block";
+      return;
+    }
+
+    this.quizCount++;
     const keys = Object.keys(this.frequencyBands);
     const random = keys[Math.floor(Math.random()*keys.length)];
     this.quizBand = random;
@@ -183,7 +241,10 @@ class AudioApp {
       this.pauseTime = this.audioContext.currentTime - this.startTime;
     }
     this.playQuizBand();
-    this.showMessage("🎯 Devinez quelle bande est jouée ! Cliquez sur la bande correspondante.");
+    this.showMessage(`🎯 Question ${this.quizCount}/${this.totalQuestions} : Devinez la bande !`);
+
+    // maj barre de progression
+    this.progressBar.style.width = ((this.quizCount-1)/this.totalQuestions*100) + "%";
   }
 
   playQuizBand(){
@@ -217,11 +278,37 @@ class AudioApp {
 
   showMessage(msg){
     this.quizMessage.textContent = msg;
-    clearTimeout(this.messageTimeout);
-    this.messageTimeout = setTimeout(()=>{ this.quizMessage.textContent=""; }, 3000);
+  }
+
+  addResult(question, answer, correct){
+    const tr = document.createElement("tr");
+    const tdQ = document.createElement("td");
+    const tdA = document.createElement("td");
+    const tdC = document.createElement("td");
+    const tdR = document.createElement("td");
+
+    tdQ.textContent = question;
+    tdA.textContent = answer ? this.frequencyBands[answer].name : "—";
+    tdC.textContent = this.frequencyBands[correct].name;
+
+    if(answer === correct){
+      tdR.textContent = "✅";
+      tdR.classList.add("correct");
+    } else {
+      tdR.textContent = "❌";
+      tdR.classList.add("incorrect");
+    }
+
+    tr.appendChild(tdQ);
+    tr.appendChild(tdA);
+    tr.appendChild(tdC);
+    tr.appendChild(tdR);
+    this.resultsBody.appendChild(tr);
   }
 
   handleCanvasClick(e){
+    if(!this.quizBand) return;
+
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const width = this.canvas.width;
@@ -231,24 +318,21 @@ class AudioApp {
       const x1 = this.frequencyToX(band.low,width);
       const x2 = this.frequencyToX(band.high,width);
       if(x >= x1 && x <= x2){
-        if(this.quizBand){ // mode quiz
-          const correctName = this.frequencyBands[this.quizBand].name;
-          if(key === this.quizBand){
-            this.showMessage("✅ Bonne réponse ! C'était " + correctName);
-          } else {
-            this.showMessage("❌ Mauvaise réponse ! C'était " + correctName);
-          }
-          this.highlightBand = this.quizBand; // surligner la bonne bande
-          this.quizBand = null;
-          this.resetBand();
+        const correct = this.quizBand;
 
-          // relance automatique du quiz après 3s
-          setTimeout(()=>this.startQuiz(), 3000);
-
-        } else { // mode normal
-          this.currentBand = key;
-          if(this.isPlaying) this.play();
+        if(key === correct){
+          this.quizScore++;
+          this.showMessage(`✅ Bonne réponse ! C'était ${this.frequencyBands[correct].name}`);
+        } else {
+          this.showMessage(`❌ Mauvaise réponse ! C'était ${this.frequencyBands[correct].name}`);
         }
+
+        this.addResult(this.quizCount, key, correct);
+        this.highlightBand = this.quizBand;
+        this.quizBand = null;
+        this.resetBand();
+
+        setTimeout(()=>this.startQuiz(), 2000);
         break;
       }
     }
@@ -298,7 +382,6 @@ class AudioApp {
       const x1 = this.frequencyToX(band.low,width);
       const x2 = this.frequencyToX(band.high,width);
 
-      // surlignage spécial si c'est la bonne réponse du quiz
       if(this.highlightBand === key){
         ctx.fillStyle = "rgba(255,255,255,0.3)";
         ctx.fillRect(x1,0,x2-x1,height);
