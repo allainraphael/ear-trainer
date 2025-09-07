@@ -24,6 +24,16 @@ button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:p
 <body>
 <h1>Ear Training</h1>
 <input type="file" id="fileInput" accept="audio/*"><br>
+
+<!-- Menu déroulant des modes -->
+<label for="modeSelect">Mode :</label>
+<select id="modeSelect">
+  <option value="7">7 bandes</option>
+  <option value="10">10 bandes</option>
+  <option value="15">15 bandes</option>
+  <option value="31">31 bandes</option>
+</select>
+
 <button id="playBtn">▶️ Play/Pause</button>
 <button id="loopBtn" class="active">🔁 Boucle ON</button>
 <button id="resetBtn">♻️ Reset bande</button>
@@ -126,6 +136,8 @@ class AudioApp {
     this.newQuizBtn.addEventListener("click", ()=>this.startQuizSeries());
     this.quitQuizBtn.addEventListener("click", ()=>this.quitQuiz());
     this.volumeSlider.addEventListener("input", ()=>this.setVolume(this.volumeSlider.value));
+    const modeSelect = document.getElementById("modeSelect");
+modeSelect.addEventListener("change", (e) => this.setMode(e.target.value));
   }
 
   resizeCanvas(){
@@ -409,6 +421,61 @@ class AudioApp {
     this.currentBand=null;
     this.play();
   }
+
+  AudioApp.prototype.setMode = function(mode){
+  if(mode === "7"){
+    this.frequencyBands = {
+      sub:{low:20,high:60,color:'rgba(255,0,0,0.5)',name:'Sub'},
+      bass:{low:60,high:250,color:'rgba(255,165,0,0.5)',name:'Bass'},
+      lowmid:{low:250,high:500,color:'rgba(255,255,0,0.5)',name:'Low Mid'},
+      mid:{low:500,high:2000,color:'rgba(0,255,0,0.5)',name:'Mid'},
+      highmid:{low:2000,high:4000,color:'rgba(0,255,255,0.5)',name:'High Mid'},
+      presence:{low:4000,high:6000,color:'rgba(0,0,255,0.5)',name:'Presence'},
+      brilliance:{low:6000,high:20000,color:'rgba(255,0,255,0.5)',name:'Brilliance'}
+    };
+  }
+  else if(mode === "10"){
+    const freqs = [20,65,131,262,523,1046,2093,4186,8372,16744,20000];
+    const colors = [
+      'rgba(255,0,0,0.5)','rgba(255,85,0,0.5)','rgba(255,170,0,0.5)',
+      'rgba(255,255,0,0.5)','rgba(170,255,0,0.5)','rgba(85,255,0,0.5)',
+      'rgba(0,255,0,0.5)','rgba(0,255,85,0.5)','rgba(0,255,170,0.5)','rgba(0,255,255,0.5)'
+    ];
+    this.frequencyBands = {};
+    for(let i=0;i<10;i++){
+      this.frequencyBands[`band${i+1}`] = {
+        low: freqs[i],
+        high: freqs[i+1],
+        color: colors[i],
+        name: `Band ${i+1}`
+      };
+    }
+  }
+  else if(mode === "15"){
+    const centers = [25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000];
+    const colors = Array.from({length:15},(_,i)=>`hsla(${i*24},100%,50%,0.5)`);
+    this.frequencyBands = {};
+    for(let i=0;i<15;i++){
+      let low = i===0 ? 20 : Math.sqrt(centers[i]*centers[i-1]);
+      let high = i===14 ? 20000 : Math.sqrt(centers[i]*centers[i+1]);
+      this.frequencyBands[`band${i+1}`] = {low, high, color: colors[i], name:`Band ${i+1}`};
+    }
+  }
+  else if(mode === "31"){
+    const centers = [20, 25, 32, 40, 50, 63, 80, 100, 125, 160,200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
+    const colors = Array.from({length:31},(_,i)=>`hsla(${i*12},100%,50%,0.5)`);
+    this.frequencyBands = {};
+    for(let i=0;i<31;i++){
+      let low = i===0 ? 20 : Math.sqrt(centers[i]*centers[i-1]);
+      let high = i===30 ? 20000 : Math.sqrt(centers[i]*centers[i+1]);
+      this.frequencyBands[`band${i+1}`] = {low, high, color: colors[i], name:`Band ${i+1}`};
+    }
+  }
+
+  this.currentBand=null;
+  this.highlightBand=null;
+  this.play(); 
+}
 
   frequencyToX(freq,width){
     const min=20, max=20000;
