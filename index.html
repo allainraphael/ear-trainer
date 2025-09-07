@@ -318,7 +318,7 @@ class AudioApp {
             clearInterval(this.clignotementInterval); 
             this.highlightBandOpacity = 0.3;
         }
-    }, 200);
+    }, 100);
 
     setTimeout(()=>{
         if(this.source){ try{ this.source.stop(); }catch(e){} }
