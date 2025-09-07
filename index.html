@@ -1,435 +1,258 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Ear Training Amélioré</title>
-<style>
-body { background:#111; color:white; font-family:Arial; text-align:center; }
-canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radius:12px; cursor:pointer; }
-button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; }
-.active { background:#4facfe; color:white; }
-#resultsTable { margin:20px auto; border-collapse:collapse; width:80%; max-width:700px; }
-#resultsTable th, #resultsTable td { border:1px solid #555; padding:8px; }
-#resultsTable th { background:#222; }
-.correct { color:lime; font-weight:bold; }
-.incorrect { color:red; font-weight:bold; }
-#replayBtn { display:none; margin-top:15px; background:#4caf50; color:white; }
-/* barre de progression */
-#progressContainer { width:80%; max-width:600px; height:20px; background:#333; border-radius:10px; margin:15px auto; overflow:hidden; display:none; }
-#progressBar { height:100%; width:0%; background:#4facfe; transition:width 0.5s ease; }
-</style>
+  <meta charset="UTF-8">
+  <title>Quiz Audio</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
+    canvas { border: 1px solid black; margin-top: 20px; }
+    #quizMessage { font-size: 20px; margin-top: 15px; font-weight: bold; }
+    #quizMessage.correct { color: green; }
+    #quizMessage.wrong { color: red; }
+    #progressContainer { width: 100%; background: #eee; height: 20px; margin-top: 10px; border-radius: 10px; overflow: hidden; }
+    #progressBar { width: 0%; height: 100%; background: #4caf50; transition: width 0.5s; }
+    #endButtons { margin-top: 15px; display: none; }
+    #endButtons button { margin: 5px; padding: 8px 16px; font-size: 16px; }
+  </style>
 </head>
 <body>
-<h1>Ear Training Amélioré</h1>
-<input type="file" id="fileInput" accept="audio/*"><br>
-<button id="playBtn">▶️ Play/Pause</button>
-<button id="loopBtn" class="active">🔁 Boucle ON</button>
-<button id="resetBtn">♻️ Reset bande</button>
-<button id="quizBtn">🎯 Quiz</button>
-<br>
-<label>Volume : <input type="range" id="volume" min="0" max="2" value="1" step="0.01"></label>
+  <h1>Quiz d'Écoute des Bandes Fréquentielles</h1>
+  <input type="file" id="fileInput" accept="audio/*"><br><br>
+  <button id="playButton">Play/Pause</button>
+  <button id="loopButton">Loop: Off</button>
+  <button id="quizButton">Mode Quiz</button>
 
-<!-- barre de progression -->
-<div id="progressContainer">
-  <div id="progressBar"></div>
-</div>
+  <canvas id="canvas" width="800" height="300"></canvas>
+  <div id="quizMessage"></div>
+  <div id="progressContainer"><div id="progressBar"></div></div>
 
-<canvas id="analyser"></canvas>
-<p id="quizMessage"></p>
-<table id="resultsTable" style="display:none;">
-  <thead>
-    <tr>
-      <th>#</th>
-      <th>Ta réponse</th>
-      <th>Bonne réponse</th>
-      <th>Résultat</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-<button id="replayBtn">🔁 Rejouer la série</button>
+  <div id="endButtons">
+    <button id="replayQuiz">Rejouer le Quiz</button>
+    <button id="newQuiz">Nouveau Quiz</button>
+  </div>
 
-<script>
-class AudioApp {
-  constructor() {
-    this.fileInput = document.getElementById("fileInput");
-    this.playBtn = document.getElementById("playBtn");
-    this.loopBtn = document.getElementById("loopBtn");
-    this.resetBtn = document.getElementById("resetBtn");
-    this.quizBtn = document.getElementById("quizBtn");
-    this.replayBtn = document.getElementById("replayBtn");
-    this.volumeSlider = document.getElementById("volume");
-    this.canvas = document.getElementById("analyser");
-    this.ctx = this.canvas.getContext("2d");
-    this.quizMessage = document.getElementById("quizMessage");
-    this.resultsTable = document.getElementById("resultsTable");
-    this.resultsBody = this.resultsTable.querySelector("tbody");
-    this.progressContainer = document.getElementById("progressContainer");
-    this.progressBar = document.getElementById("progressBar");
+  <script>
+    class AudioQuiz {
+      constructor() {
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 2048;
+        this.source = null;
+        this.buffer = null;
+        this.isPlaying = false;
+        this.isLooping = false;
 
-    this.audioContext = null;
-    this.source = null;
-    this.analyser = null;
-    this.gainNode = null;
-    this.filterNode = null;
-    this.buffer = null;
-    this.isPlaying = false;
-    this.isLooping = true;
-    this.startTime = 0;
-    this.pauseTime = 0;
+        this.bands = [
+          { name: "Graves", freq: 100 },
+          { name: "Bas Médiums", freq: 400 },
+          { name: "Médiums", freq: 1000 },
+          { name: "Hauts Médiums", freq: 3000 },
+          { name: "Aigus", freq: 8000 }
+        ];
+        this.filters = [];
 
-    this.currentBand = null;
-    this.quizBand = null;
-    this.highlightBand = null;
+        this.isQuizMode = false;
+        this.correctBand = null;
+        this.quizActive = false;
+        this.quizCount = 0;
+        this.quizScore = 0;
+        this.totalQuestions = 10;
 
-    // suivi du quiz
-    this.quizActive = false;
-    this.quizCount = 0;
-    this.quizScore = 0;
-    this.totalQuestions = 10;
+        this.canvas = document.getElementById("canvas");
+        this.ctx = this.canvas.getContext("2d");
 
-    this.frequencyBands = {
-      sub:{low:20,high:60,color:'rgba(255,0,0,0.5)',name:'Sub'},
-      bass:{low:60,high:250,color:'rgba(255,165,0,0.5)',name:'Bass'},
-      lowmid:{low:250,high:500,color:'rgba(255,255,0,0.5)',name:'Low Mid'},
-      mid:{low:500,high:2000,color:'rgba(0,255,0,0.5)',name:'Mid'},
-      highmid:{low:2000,high:4000,color:'rgba(0,255,255,0.5)',name:'High Mid'},
-      presence:{low:4000,high:6000,color:'rgba(0,0,255,0.5)',name:'Presence'},
-      brilliance:{low:6000,high:20000,color:'rgba(255,0,255,0.5)',name:'Brilliance'}
-    };
+        this.fileInput = document.getElementById("fileInput");
+        this.playButton = document.getElementById("playButton");
+        this.loopButton = document.getElementById("loopButton");
+        this.quizButton = document.getElementById("quizButton");
+        this.quizMessage = document.getElementById("quizMessage");
+        this.progressBar = document.getElementById("progressBar");
 
-    this.bindEvents();
-    this.resizeCanvas();
-    window.addEventListener("resize",()=>this.resizeCanvas());
-    this.canvas.addEventListener("click",(e)=>this.handleCanvasClick(e));
-    this.animationId = null;
-  }
+        this.endButtons = document.getElementById("endButtons");
+        this.replayQuizButton = document.getElementById("replayQuiz");
+        this.newQuizButton = document.getElementById("newQuiz");
 
-  bindEvents(){
-    this.fileInput.addEventListener("change", e=>this.loadFile(e));
-    this.playBtn.addEventListener("click", ()=>this.togglePlay());
-    this.loopBtn.addEventListener("click", ()=>this.toggleLoop());
-    this.resetBtn.addEventListener("click", ()=>this.resetBand());
-    this.quizBtn.addEventListener("click", ()=>this.startQuizSeries());
-    this.replayBtn.addEventListener("click", ()=>this.startQuizSeries());
-    this.volumeSlider.addEventListener("input", ()=>this.setVolume(this.volumeSlider.value));
-  }
+        this.fileInput.addEventListener("change", e => this.loadFile(e));
+        this.playButton.addEventListener("click", () => this.togglePlay());
+        this.loopButton.addEventListener("click", () => this.toggleLoop());
+        this.quizButton.addEventListener("click", () => this.toggleQuiz());
+        this.canvas.addEventListener("click", e => this.handleCanvasClick(e));
+        this.replayQuizButton.addEventListener("click", () => this.startQuiz());
+        this.newQuizButton.addEventListener("click", () => this.resetQuiz());
 
-  resizeCanvas(){
-    this.canvas.width = this.canvas.offsetWidth;
-    this.canvas.height = this.canvas.offsetHeight;
-  }
+        this.draw();
+      }
 
-  async loadFile(e){
-    const file = e.target.files[0];
-    if(!file) return;
+      async loadFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const arrayBuffer = await file.arrayBuffer();
+        this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      }
 
-    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuffer = await file.arrayBuffer();
-    this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      createFilters() {
+        this.filters = this.bands.map(band => {
+          const filter = this.audioContext.createBiquadFilter();
+          filter.type = "bandpass";
+          filter.frequency.value = band.freq;
+          filter.Q.value = 1;
+          return filter;
+        });
+      }
 
-    if(!this.gainNode){
-      this.gainNode = this.audioContext.createGain();
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 2048;
-      this.floatData = new Float32Array(this.analyser.frequencyBinCount);
-      this.gainNode.connect(this.analyser);
-      this.analyser.connect(this.audioContext.destination);
-      this.setVolume(this.volumeSlider.value);
-    }
+      play() {
+        if (!this.buffer) return;
+        if (this.source) this.source.stop();
 
-    this.pauseTime = 0;
-    this.play();
-  }
+        this.source = this.audioContext.createBufferSource();
+        this.source.buffer = this.buffer;
+        this.source.loop = this.isLooping;
 
-  play(){
-    if(!this.buffer) return;
+        this.createFilters();
 
-    if(this.audioContext.state === "suspended") {
-      this.audioContext.resume();
-    }
-
-    if(this.source){
-      try { this.source.stop(); } catch(e){}
-      this.source.disconnect();
-    }
-
-    this.source = this.audioContext.createBufferSource();
-    this.source.buffer = this.buffer;
-    this.source.loop = this.isLooping;
-
-    if(this.filterNode){
-      this.filterNode.disconnect();
-      this.filterNode = null;
-    }
-
-    if(this.currentBand){
-      const band = this.frequencyBands[this.currentBand];
-      const filter = this.audioContext.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.value = Math.sqrt(band.low*band.high);
-      filter.Q.value = filter.frequency.value/(band.high-band.low);
-      this.source.connect(filter);
-      filter.connect(this.gainNode);
-      this.filterNode = filter;
-    } else {
-      this.source.connect(this.gainNode);
-    }
-
-    this.startTime = this.audioContext.currentTime - this.pauseTime;
-    this.source.start(0,this.pauseTime);
-    this.isPlaying = true;
-
-    if(!this.animationId) this.animate();
-  }
-
-  togglePlay(){
-    if(!this.isPlaying){ this.play(); }
-    else{
-      if(this.source) this.source.stop();
-      this.pauseTime = this.audioContext.currentTime - this.startTime;
-      this.isPlaying = false;
-      if(this.animationId) { cancelAnimationFrame(this.animationId); this.animationId=null; }
-    }
-  }
-
-  toggleLoop(){
-    this.isLooping = !this.isLooping;
-    this.loopBtn.classList.toggle("active", this.isLooping);
-    this.loopBtn.textContent = this.isLooping ? "🔁 Boucle ON" : "🔁 Boucle OFF";
-    if(this.source) this.source.loop = this.isLooping;
-  }
-
-  setVolume(val){
-    if(this.gainNode) this.gainNode.gain.value = val;
-  }
-
-  resetBand(){
-    this.currentBand = null;
-    if(this.isPlaying) this.play();
-  }
-
-  startQuizSeries(){
-    this.quizActive = true;
-    this.quizCount = 0;
-    this.quizScore = 0;
-    this.resultsBody.innerHTML = "";
-    this.resultsTable.style.display = "table";
-    this.replayBtn.style.display = "none";
-    this.progressContainer.style.display = "block";
-    this.progressBar.style.width = "0%";
-    this.startQuiz();
-  }
-
-  startQuiz(){
-    if(this.quizCount >= this.totalQuestions){
-      this.quizActive = false;
-      this.showMessage(`🏆 Série terminée ! Score : ${this.quizScore}/${this.totalQuestions}`);
-      this.replayBtn.style.display = "inline-block";
-      return;
-    }
-
-    this.quizCount++;
-    const keys = Object.keys(this.frequencyBands);
-    const random = keys[Math.floor(Math.random()*keys.length)];
-    this.quizBand = random;
-    this.currentBand = null;
-    this.highlightBand = null;
-
-    if(this.isPlaying){
-      this.source.stop();
-      this.pauseTime = this.audioContext.currentTime - this.startTime;
-    }
-    this.playQuizBand();
-    this.showMessage(`🎯 Question ${this.quizCount}/${this.totalQuestions} : Devinez la bande !`);
-
-    // maj barre de progression
-    this.progressBar.style.width = ((this.quizCount-1)/this.totalQuestions*100) + "%";
-  }
-
-  playQuizBand(){
-    if(!this.buffer) return;
-
-    if(this.source){
-      try{ this.source.stop(); }catch(e){}
-      this.source.disconnect();
-    }
-
-    this.source = this.audioContext.createBufferSource();
-    this.source.buffer = this.buffer;
-    this.source.loop = this.isLooping;
-
-    const band = this.frequencyBands[this.quizBand];
-    const filter = this.audioContext.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.value = Math.sqrt(band.low*band.high);
-    filter.Q.value = filter.frequency.value/(band.high-band.low);
-
-    this.source.connect(filter);
-    filter.connect(this.gainNode);
-    this.filterNode = filter;
-
-    this.startTime = this.audioContext.currentTime - this.pauseTime;
-    this.source.start(0,this.pauseTime);
-    this.isPlaying = true;
-
-    if(!this.animationId) this.animate();
-  }
-
-  showMessage(msg){
-    this.quizMessage.textContent = msg;
-  }
-
-  addResult(question, answer, correct){
-    const tr = document.createElement("tr");
-    const tdQ = document.createElement("td");
-    const tdA = document.createElement("td");
-    const tdC = document.createElement("td");
-    const tdR = document.createElement("td");
-
-    tdQ.textContent = question;
-    tdA.textContent = answer ? this.frequencyBands[answer].name : "—";
-    tdC.textContent = this.frequencyBands[correct].name;
-
-    if(answer === correct){
-      tdR.textContent = "✅";
-      tdR.classList.add("correct");
-    } else {
-      tdR.textContent = "❌";
-      tdR.classList.add("incorrect");
-    }
-
-    tr.appendChild(tdQ);
-    tr.appendChild(tdA);
-    tr.appendChild(tdC);
-    tr.appendChild(tdR);
-    this.resultsBody.appendChild(tr);
-  }
-
-  handleCanvasClick(e){
-    if(!this.quizBand) return;
-
-    const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = this.canvas.width;
-
-    for(const key in this.frequencyBands){
-      const band = this.frequencyBands[key];
-      const x1 = this.frequencyToX(band.low,width);
-      const x2 = this.frequencyToX(band.high,width);
-      if(x >= x1 && x <= x2){
-        const correct = this.quizBand;
-
-        if(key === correct){
-          this.quizScore++;
-          this.showMessage(`✅ Bonne réponse ! C'était ${this.frequencyBands[correct].name}`);
+        let node = this.source;
+        if (this.isQuizMode && this.correctBand !== null) {
+          node.connect(this.filters[this.correctBand]);
+          this.filters[this.correctBand].connect(this.analyser);
+          this.analyser.connect(this.audioContext.destination);
         } else {
-          this.showMessage(`❌ Mauvaise réponse ! C'était ${this.frequencyBands[correct].name}`);
+          node.connect(this.analyser);
+          this.analyser.connect(this.audioContext.destination);
         }
 
-        this.addResult(this.quizCount, key, correct);
-        this.highlightBand = this.quizBand;
-        this.quizBand = null;
-        this.resetBand();
-
-        setTimeout(()=>this.startQuiz(), 2000);
-        break;
-      }
-    }
-  }
-
-  frequencyToX(freq,width){
-    const min=20, max=20000;
-    const logMin=Math.log10(min), logMax=Math.log10(max);
-    const ratio=(Math.log10(freq)-logMin)/(logMax-logMin);
-    return ratio*width;
-  }
-
-  dbToY(db,height){
-    const maxDb = 20;
-    let minDb = -100;
-    if(this.floatData){
-      let minVal = Math.min(...this.floatData);
-      if(minVal > -100) minDb = Math.floor(minVal/10)*10;
-    }
-    const ratio=(db-minDb)/(maxDb-minDb);
-    return height - (ratio*height);
-  }
-
-  drawSpectrum(){
-    const ctx = this.ctx;
-    const width = this.canvas.width;
-    const height = this.canvas.height;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0,0,width,height);
-
-    if(!this.analyser) return;
-    this.analyser.getFloatFrequencyData(this.floatData);
-
-    // repères dB
-    const dBsteps = [20,0,-20,-40,-60,-80,-100];
-    ctx.fillStyle="#aaa";
-    ctx.font="10px Arial";
-    ctx.textAlign="right";
-    dBsteps.forEach(db=>{
-      const y = this.dbToY(db,height);
-      ctx.fillText(db+" dB", width-2, y-2);
-    });
-
-    // bandes
-    for(const key in this.frequencyBands){
-      const band = this.frequencyBands[key];
-      const x1 = this.frequencyToX(band.low,width);
-      const x2 = this.frequencyToX(band.high,width);
-
-      if(this.highlightBand === key){
-        ctx.fillStyle = "rgba(255,255,255,0.3)";
-        ctx.fillRect(x1,0,x2-x1,height);
+        this.source.start();
+        this.isPlaying = true;
+        this.playButton.textContent = "Pause";
       }
 
-      ctx.fillStyle = (this.currentBand===key)?band.color:band.color.replace("0.5","0.2");
-      ctx.fillRect(x1,0,x2-x1,height);
+      stop() {
+        if (this.source) this.source.stop();
+        this.isPlaying = false;
+        this.playButton.textContent = "Play";
+      }
 
-      ctx.fillStyle='#fff';
-      ctx.font='12px Arial';
-      ctx.textAlign='center';
-      ctx.fillText(`${band.name}`,(x1+x2)/2,20);
-      ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
+      togglePlay() {
+        if (this.audioContext.state === "suspended") {
+          this.audioContext.resume();
+        }
+        if (this.isPlaying) {
+          this.stop();
+        } else {
+          this.play();
+        }
+      }
+
+      toggleLoop() {
+        this.isLooping = !this.isLooping;
+        this.loopButton.textContent = this.isLooping ? "Loop: On" : "Loop: Off";
+        if (this.source) this.source.loop = this.isLooping;
+      }
+
+      toggleQuiz() {
+        this.isQuizMode = !this.isQuizMode;
+        this.quizButton.textContent = this.isQuizMode ? "Quitter Quiz" : "Mode Quiz";
+        this.quizMessage.textContent = "";
+        this.progressBar.style.width = "0%";
+        this.endButtons.style.display = "none";
+        if (this.isQuizMode) {
+          this.startQuiz();
+        } else {
+          this.resetQuiz();
+        }
+      }
+
+      startQuiz() {
+        this.endButtons.style.display = "none";
+        this.quizActive = true;
+        this.quizCount = 0;
+        this.quizScore = 0;
+        this.progressBar.style.width = "0%";
+        this.nextQuestion();
+      }
+
+      resetQuiz() {
+        this.stop();
+        this.quizActive = false;
+        this.correctBand = null;
+        this.quizCount = 0;
+        this.quizScore = 0;
+        this.progressBar.style.width = "0%";
+        this.quizMessage.textContent = "";
+        this.endButtons.style.display = "none";
+        if (this.isQuizMode) this.startQuiz();
+      }
+
+      nextQuestion() {
+        if (this.quizCount >= this.totalQuestions) {
+          this.endQuiz();
+          return;
+        }
+        this.correctBand = Math.floor(Math.random() * this.bands.length);
+        this.quizCount++;
+        this.stop();
+        this.play();
+      }
+
+      handleCanvasClick(event) {
+        if (!this.isQuizMode || !this.quizActive) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const bandWidth = this.canvas.width / this.bands.length;
+        const clickedBand = Math.floor(x / bandWidth);
+
+        if (clickedBand === this.correctBand) {
+          this.quizMessage.textContent = "Bonne réponse !";
+          this.quizMessage.className = "correct";
+          this.quizScore++;
+        } else {
+          this.quizMessage.textContent = `Mauvaise réponse... C'était "${this.bands[this.correctBand].name}"`;
+          this.quizMessage.className = "wrong";
+        }
+
+        const progress = (this.quizCount / this.totalQuestions) * 100;
+        this.progressBar.style.width = progress + "%";
+
+        setTimeout(() => {
+          this.quizMessage.textContent = "";
+          this.correctBand = null;
+          this.nextQuestion();
+        }, 2000);
+      }
+
+      endQuiz() {
+        this.quizActive = false;
+        this.stop();
+        this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
+        this.quizMessage.className = "";
+        this.endButtons.style.display = "block";
+      }
+
+      draw() {
+        requestAnimationFrame(() => this.draw());
+        const bufferLength = this.analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        this.analyser.getByteFrequencyData(dataArray);
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        const barWidth = (this.canvas.width / bufferLength) * 2.5;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const barHeight = dataArray[i] / 2;
+          this.ctx.fillStyle = "rgb(" + (barHeight + 100) + ",50,50)";
+          this.ctx.fillRect(x, this.canvas.height - barHeight, barWidth, barHeight);
+          x += barWidth + 1;
+        }
+
+        if (this.isQuizMode && this.correctBand !== null) {
+          const bandWidth = this.canvas.width / this.bands.length;
+          this.ctx.fillStyle = "rgba(0,255,0,0.3)";
+          this.ctx.fillRect(this.correctBand * bandWidth, 0, bandWidth, this.canvas.height);
+        }
+      }
     }
 
-    // repères Hz
-    const freqs = [20,50,100,200,500,1000,2000,5000,10000,20000];
-    ctx.fillStyle="#aaa";
-    ctx.font="10px Arial";
-    ctx.textAlign="left";
-    freqs.forEach(freq=>{
-      const x = this.frequencyToX(freq,width);
-      ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz", x+2, height-5);
-    });
-
-    // spectre
-    ctx.beginPath();
-    ctx.strokeStyle='#4facfe';
-    ctx.lineWidth=2;
-    for(let i=0;i<this.floatData.length;i++){
-      const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
-      if(freq<20||freq>20000) continue;
-      const x = this.frequencyToX(freq,width);
-      const dB = this.floatData[i];
-      const y = this.dbToY(dB,height);
-      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-  }
-
-  animate(){
-    if(!this.isPlaying) { this.animationId = null; return; }
-    this.animationId = requestAnimationFrame(()=>this.animate());
-    this.drawSpectrum();
-  }
-}
-
-new AudioApp();
-</script>
+    const app = new AudioQuiz();
+  </script>
 </body>
 </html>
