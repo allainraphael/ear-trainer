@@ -13,10 +13,8 @@ button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:p
 #resultsTable th { background:#222; }
 .correct { color:lime; font-weight:bold; }
 .incorrect { color:red; font-weight:bold; }
-#replayBtn, #newQuizBtn, #quitQuizBtn { display:none; margin-top:15px; }
-#replayBtn { background:#4caf50; color:white; }
-#newQuizBtn { background:#2196f3; color:white; }
-#quitQuizBtn { background:#f44336; color:white; }
+#replayBtn, #newQuizBtn, #quitQuizBtn { display:none; margin-top:15px; background:#4caf50; color:white; }
+#quitQuizBtn { background:#f44336; }
 /* barre de progression */
 #progressContainer { width:80%; max-width:600px; height:20px; background:#333; border-radius:10px; margin:15px auto; overflow:hidden; display:none; }
 #progressBar { height:100%; width:0%; background:#4facfe; transition:width 0.5s ease; }
@@ -50,11 +48,11 @@ button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:p
   </thead>
   <tbody></tbody>
 </table>
-
-<!-- boutons quiz -->
-<button id="replayBtn">🔁 Rejouer la série</button>
-<button id="newQuizBtn">✨ Nouveau quiz</button>
-<button id="quitQuizBtn">❌ Quitter quiz</button>
+<div>
+  <button id="replayBtn">🔁 Rejouer la série</button>
+  <button id="newQuizBtn">🎯 Nouveau quiz</button>
+  <button id="quitQuizBtn">❌ Quitter quiz</button>
+</div>
 
 <script>
 class AudioApp {
@@ -220,30 +218,29 @@ class AudioApp {
 
   startQuizSeries(replay=false){
     this.quizActive = true;
-    this.quizCount = replay ? 0 : 0;
+    this.quizCount = 0;
     this.quizScore = 0;
     this.resultsBody.innerHTML = "";
     this.resultsTable.style.display = "table";
-    this.replayBtn.style.display = "none";
-    this.newQuizBtn.style.display = "none";
+    this.replayBtn.style.display = "inline-block";
+    this.newQuizBtn.style.display = "inline-block";
     this.quitQuizBtn.style.display = "inline-block";
     this.progressContainer.style.display = "block";
     this.progressBar.style.width = "0%";
-    this.startQuiz(); // déjà présent
-    if(this.buffer){ this.playQuizBand(); } // relance le son automatiquement
+    this.startQuiz();
+    if(replay && this.buffer) this.playQuizBand();
   }
 
-  if(this.quizCount >= this.totalQuestions){
-  this.quizActive = false;
-  if(this.source){ 
-    try { this.source.stop(); } catch(e) {}
-  }
-  this.isPlaying = false;
-  this.showMessage(`🏆 Série terminée ! Score : ${this.quizScore}/${this.totalQuestions}`);
-  this.replayBtn.style.display = "inline-block";
-  this.newQuizBtn.style.display = "inline-block";
-  return;
-}
+  startQuiz(){
+    if(this.quizCount >= this.totalQuestions){
+      this.quizActive = false;
+      if(this.source){ 
+        try { this.source.stop(); } catch(e) {}
+      }
+      this.isPlaying = false;
+      this.showMessage(`🏆 Série terminée ! Score : ${this.quizScore}/${this.totalQuestions}`);
+      return;
+    }
 
     this.quizCount++;
     const keys = Object.keys(this.frequencyBands);
@@ -252,14 +249,13 @@ class AudioApp {
     this.currentBand = null;
     this.highlightBand = null;
 
-    if(this.isPlaying){
-      this.source.stop();
+    if(this.isPlaying && this.source){
+      try{ this.source.stop(); }catch(e){}
       this.pauseTime = this.audioContext.currentTime - this.startTime;
     }
     this.playQuizBand();
     this.showMessage(`🎯 Question ${this.quizCount}/${this.totalQuestions} : Devinez la bande !`);
 
-    // maj barre de progression
     this.progressBar.style.width = ((this.quizCount-1)/this.totalQuestions*100) + "%";
   }
 
@@ -323,31 +319,10 @@ class AudioApp {
   }
 
   handleCanvasClick(e){
-    const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = this.canvas.width;
-
-    if(this.quizActive && this.quizBand){
-      // mode quiz
-      for(const key in this.frequencyBands){
-        const band = this.frequencyBands[key];
-        const x1 = this.frequencyToX(band.low,width);
-        const x2 = this.frequencyToX(band.high,width);
-        if(x >= x1 && x <= x2){
-          const correct = this.quizBand;
-          if(key === correct) this.quizScore++;
-          this.addResult(this.quizCount, key, correct);
-
-          this.highlightBand = correct;
-          this.quizBand = null;
-          this.resetBand();
-
-          setTimeout(()=>this.startQuiz(), 1500); // délai avant prochaine question
-          break;
-        }
-      }
-    } else {
-      // mode normal
+    if(!this.quizActive) { // mode normal
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const width = this.canvas.width;
       for(const key in this.frequencyBands){
         const band = this.frequencyBands[key];
         const x1 = this.frequencyToX(band.low,width);
@@ -357,6 +332,37 @@ class AudioApp {
           if(this.isPlaying) this.play();
           break;
         }
+      }
+      return;
+    }
+
+    if(!this.quizBand) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = this.canvas.width;
+
+    for(const key in this.frequencyBands){
+      const band = this.frequencyBands[key];
+      const x1 = this.frequencyToX(band.low,width);
+      const x2 = this.frequencyToX(band.high,width);
+      if(x >= x1 && x <= x2){
+        const correct = this.quizBand;
+
+        if(key === correct){
+          this.quizScore++;
+          this.showMessage(`✅ Bonne réponse ! C'était ${this.frequencyBands[correct].name}`);
+        } else {
+          this.showMessage(`❌ Mauvaise réponse ! C'était ${this.frequencyBands[correct].name}`);
+        }
+
+        this.addResult(this.quizCount, key, correct);
+        this.highlightBand = this.quizBand;
+        this.quizBand = null;
+        this.resetBand();
+
+        setTimeout(()=>this.startQuiz(), 2000);
+        break;
       }
     }
   }
@@ -370,7 +376,7 @@ class AudioApp {
     this.quitQuizBtn.style.display = "none";
     this.resultsTable.style.display = "none";
     this.progressContainer.style.display = "none";
-    this.showMessage("🎵 Mode libre : écoutez les bandes à votre guise.");
+    this.showMessage("Quiz quitté. Vous pouvez écouter librement les bandes.");
     this.resetBand();
   }
 
@@ -402,7 +408,6 @@ class AudioApp {
     if(!this.analyser) return;
     this.analyser.getFloatFrequencyData(this.floatData);
 
-    // repères dB
     const dBsteps = [20,0,-20,-40,-60,-80,-100];
     ctx.fillStyle="#aaa";
     ctx.font="10px Arial";
@@ -412,7 +417,6 @@ class AudioApp {
       ctx.fillText(db+" dB", width-2, y-2);
     });
 
-    // bandes
     for(const key in this.frequencyBands){
       const band = this.frequencyBands[key];
       const x1 = this.frequencyToX(band.low,width);
@@ -433,7 +437,6 @@ class AudioApp {
       ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
     }
 
-    // repères Hz
     const freqs = [20,50,100,200,500,1000,2000,5000,10000,20000];
     ctx.fillStyle="#aaa";
     ctx.font="10px Arial";
@@ -443,7 +446,6 @@ class AudioApp {
       ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz", x+2, height-5);
     });
 
-    // spectre
     ctx.beginPath();
     ctx.strokeStyle='#4facfe';
     ctx.lineWidth=2;
