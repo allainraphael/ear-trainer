@@ -229,17 +229,21 @@ class AudioApp {
     this.quitQuizBtn.style.display = "inline-block";
     this.progressContainer.style.display = "block";
     this.progressBar.style.width = "0%";
-    this.startQuiz();
+    this.startQuiz(); // déjà présent
+    if(this.buffer){ this.playQuizBand(); } // relance le son automatiquement
   }
 
-  startQuiz(){
-    if(this.quizCount >= this.totalQuestions){
-      this.quizActive = false;
-      this.showMessage(`🏆 Série terminée ! Score : ${this.quizScore}/${this.totalQuestions}`);
-      this.replayBtn.style.display = "inline-block";
-      this.newQuizBtn.style.display = "inline-block";
-      return;
-    }
+  if(this.quizCount >= this.totalQuestions){
+  this.quizActive = false;
+  if(this.source){ 
+    try { this.source.stop(); } catch(e) {}
+  }
+  this.isPlaying = false;
+  this.showMessage(`🏆 Série terminée ! Score : ${this.quizScore}/${this.totalQuestions}`);
+  this.replayBtn.style.display = "inline-block";
+  this.newQuizBtn.style.display = "inline-block";
+  return;
+}
 
     this.quizCount++;
     const keys = Object.keys(this.frequencyBands);
