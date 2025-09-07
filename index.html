@@ -411,19 +411,56 @@ class AudioApp {
     return height - (ratio*height);
   }
 
-  drawSpectrum(){
+ drawSpectrum(){
     const ctx = this.ctx;
     const width = this.canvas.width;
     const height = this.canvas.height;
-    ctx.clearRect(0,0,width,height);
 
-    // affichage des bandes
+    // fond
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+
+    // affichage pendant une question : bandes + point d'interrogation, pas de spectre
+    if(this.modeQuestion){
+        // bandes
+        for(const key in this.frequencyBands){
+            const band = this.frequencyBands[key];
+            const x1 = this.frequencyToX(band.low,width);
+            const x2 = this.frequencyToX(band.high,width);
+            ctx.fillStyle = band.color.replace("0.5","0.2");
+            ctx.fillRect(x1,0,x2-x1,height);
+            ctx.fillStyle='#fff';
+            ctx.font='12px Arial';
+            ctx.textAlign='center';
+            ctx.fillText(`${band.name}`,(x1+x2)/2,20);
+            ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
+        }
+        // point d'interrogation
+        ctx.fillStyle="rgba(255,255,255,0.8)";
+        ctx.font = "80px Arial";
+        ctx.textAlign="center";
+        ctx.textBaseline="middle";
+        ctx.fillText("?", width/2, height/2);
+        return; 
+    }
+
+    // repères dB
+    const dBsteps = [20,0,-20,-40,-60,-80,-100];
+    ctx.fillStyle="#aaa";
+    ctx.font="10px Arial";
+    ctx.textAlign="right";
+    dBsteps.forEach(db=>{
+        const y = this.dbToY(db,height);
+        ctx.fillText(db+" dB", width-2, y-2);
+    });
+
+    // bandes
     for(const key in this.frequencyBands){
         const band = this.frequencyBands[key];
         const x1 = this.frequencyToX(band.low,width);
         const x2 = this.frequencyToX(band.high,width);
 
-        if(this.modeReponse && this.highlightBand === key){
+        if(this.highlightBand === key){
             ctx.fillStyle = "rgba(255,255,255,0.3)";
             ctx.fillRect(x1,0,x2-x1,height);
         }
@@ -438,32 +475,32 @@ class AudioApp {
         ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
     }
 
-    // point d'interrogation pendant la question
-    if(this.modeQuestion){
-        ctx.fillStyle="rgba(255,255,255,0.8)";
-        ctx.font = "80px Arial";
-        ctx.textAlign="center";
-        ctx.textBaseline="middle";
-        ctx.fillText("?", width/2, height/2);
-        return; 
-    }
-
-    if(!this.analyser || !this.modeReponse) return;
-
-    // spectre
-    this.analyser.getFloatFrequencyData(this.floatData);
-    ctx.beginPath();
-    ctx.strokeStyle='#4facfe';
-    ctx.lineWidth=2;
-    for(let i=0;i<this.floatData.length;i++){
-        const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
-        if(freq<20||freq>20000) continue;
+    // repères Hz
+    const freqs = [20,50,100,200,500,1000,2000,5000,10000,20000];
+    ctx.fillStyle="#aaa";
+    ctx.font="10px Arial";
+    ctx.textAlign="left";
+    freqs.forEach(freq=>{
         const x = this.frequencyToX(freq,width);
-        const y = this.dbToY(this.floatData[i],height);
-        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz", x+2, height-5);
+    });
+
+    // spectre si audio en cours (mode normal ou réponse)
+    if(this.analyser){
+        this.analyser.getFloatFrequencyData(this.floatData);
+        ctx.beginPath();
+        ctx.strokeStyle='#4facfe';
+        ctx.lineWidth=2;
+        for(let i=0;i<this.floatData.length;i++){
+            const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
+            if(freq<20||freq>20000) continue;
+            const x = this.frequencyToX(freq,width);
+            const y = this.dbToY(this.floatData[i],height);
+            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
     }
-    ctx.stroke();
-  }
+}
 
   animate(){
     if(!this.isPlaying) { this.animationId = null; return; }
