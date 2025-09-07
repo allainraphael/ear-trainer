@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Ear Training Amélioré</title>
+<title>Ear Training</title>
 <style>
 body { background:#111; color:white; font-family:Arial; text-align:center; }
 canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radius:12px; cursor:pointer; }
@@ -453,26 +453,30 @@ class AudioApp {
       ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz", x+2, height-5);
     });
 
-    // spectre
-    ctx.beginPath();
-    ctx.strokeStyle='#4facfe';
-    ctx.lineWidth=2;
-    for(let i=0;i<this.floatData.length;i++){
-      const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
-      if(freq<20||freq>20000) continue;
-      const x = this.frequencyToX(freq,width);
-      const dB = this.floatData[i];
-      const y = this.dbToY(dB,height);
-      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    // --- spectre uniquement si pas en question ---
+    if(!this.isQuestion){
+      ctx.beginPath();
+      ctx.strokeStyle='#4facfe';
+      ctx.lineWidth=2;
+      for(let i=0;i<this.floatData.length;i++){
+        const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
+        if(freq<20||freq>20000) continue;
+        const x = this.frequencyToX(freq,width);
+        const dB = this.floatData[i];
+        const y = this.dbToY(dB,height);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
-  }
 
-  animate(){
-    if(!this.isPlaying) { this.animationId = null; return; }
-    this.animationId = requestAnimationFrame(()=>this.animate());
-    this.drawSpectrum();
-  }
+    // --- point d'interrogation superposé si question ---
+    if(this.isQuestion){
+      ctx.fillStyle="rgba(255,255,255,0.6)";
+      ctx.font="80px Arial";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText("?", width/2, height/2);
+    }
 }
 
 new AudioApp();
