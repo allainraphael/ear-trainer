@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Ear Training</title>
+<title>Ear Training Amélioré</title>
 <style>
 body { background:#111; color:white; font-family:Arial; text-align:center; }
 canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radius:12px; cursor:pointer; }
@@ -22,7 +22,7 @@ button { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:p
 </style>
 </head>
 <body>
-<h1>Ear Training</h1>
+<h1>Ear Training Amélioré</h1>
 <input type="file" id="fileInput" accept="audio/*"><br>
 <button id="playBtn">▶️ Play/Pause</button>
 <button id="loopBtn" class="active">🔁 Boucle ON</button>
@@ -88,10 +88,10 @@ class AudioApp {
     this.currentBand = null;
     this.quizBand = null;
     this.highlightBand = null;
+    this.highlightBandOpacity = 0.3;
+    this.showQuestionOverlay = false;
 
-    this.modeQuestion = false;
-    this.modeReponse = false;
-
+    // suivi du quiz
     this.quizActive = false;
     this.quizCount = 0;
     this.quizScore = 0;
@@ -249,13 +249,12 @@ class AudioApp {
     this.quizBand = random;
     this.currentBand = null;
     this.highlightBand = null;
-    this.modeQuestion = true;
-    this.modeReponse = false;
+    this.highlightBandOpacity = 0.3;
+    this.showQuestionOverlay = true;
 
     if(this.isPlaying){ if(this.source){ this.source.stop(); this.pauseTime = this.audioContext.currentTime - this.startTime; } }
     this.playQuizBand();
     this.showMessage(`🎯 Question ${this.quizCount}/${this.totalQuestions} : Devinez la bande !`);
-
     this.progressBar.style.width = ((this.quizCount-1)/this.totalQuestions*100) + "%";
   }
 
@@ -306,10 +305,32 @@ class AudioApp {
     this.source.start(0);
     this.isPlaying = true;
 
+    // clignotement
+    this.highlightBand = bandKey;
+    this.highlightBandOpacity = 0.7;
+    this.animateHighlightBand(bandKey, duration, 6);
+
     setTimeout(()=>{
       if(this.source){ try{ this.source.stop(); }catch(e){} }
       this.isPlaying=false;
     }, duration);
+  }
+
+  animateHighlightBand(bandKey, duration=1500, flashes=6){
+    let count = 0;
+    const interval = duration / flashes;
+    const blink = ()=>{
+        if(count >= flashes){
+            this.highlightBandOpacity = 0.3;
+            this.drawSpectrum();
+            return;
+        }
+        count++;
+        this.highlightBandOpacity = (count % 2 === 0) ? 0.3 : 0.7;
+        this.drawSpectrum();
+        setTimeout(blink, interval);
+    };
+    blink();
   }
 
   showMessage(msg){
@@ -349,23 +370,15 @@ class AudioApp {
         const x1 = this.frequencyToX(band.low,width);
         const x2 = this.frequencyToX(band.high,width);
         if(x >= x1 && x <= x2){
-            if(this.quizActive && this.quizBand && this.modeQuestion){ 
+            if(this.quizActive && this.quizBand){ 
                 const correct = this.quizBand;
-                if(key === correct){ 
-                    this.quizScore++; 
-                    this.showMessage(`✅ Bonne réponse ! C'était ${this.frequencyBands[correct].name}`);
-                } else { 
-                    this.showMessage(`❌ Mauvaise réponse ! C'était ${this.frequencyBands[correct].name}`); 
-                }
+                if(key === correct){ this.quizScore++; this.showMessage(`✅ Bonne réponse ! C'était ${this.frequencyBands[correct].name}`);}
+                else { this.showMessage(`❌ Mauvaise réponse ! C'était ${this.frequencyBands[correct].name}`); }
 
                 this.addResult(this.quizCount,key,correct);
-
-                this.highlightBand = correct;
+                this.showQuestionOverlay = false;
+                this.playHighlightBand(correct); // lecture filtrée + clignotement
                 this.quizBand = null;
-                this.modeQuestion = false;
-                this.modeReponse = true;
-                this.playHighlightBand(this.highlightBand, 2000);
-
                 setTimeout(()=>this.startQuiz(),2000);
             } else { 
                 this.currentBand = key;
@@ -374,14 +387,13 @@ class AudioApp {
             break;
         }
     }
-  }
+}
 
   quitQuiz(){
     this.quizActive=false;
     this.quizBand=null;
     this.highlightBand=null;
-    this.modeQuestion=false;
-    this.modeReponse=false;
+    this.showQuestionOverlay=false;
     if(this.source){ try{ this.source.stop(); }catch(e){} this.isPlaying=false; }
     this.resultsTable.style.display="none";
     this.progressContainer.style.display="none";
@@ -411,38 +423,12 @@ class AudioApp {
     return height - (ratio*height);
   }
 
- drawSpectrum(){
+  drawSpectrum(){
     const ctx = this.ctx;
     const width = this.canvas.width;
     const height = this.canvas.height;
-
-    // fond
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
-
-    // affichage pendant une question : bandes + point d'interrogation, pas de spectre
-    if(this.modeQuestion){
-        // bandes
-        for(const key in this.frequencyBands){
-            const band = this.frequencyBands[key];
-            const x1 = this.frequencyToX(band.low,width);
-            const x2 = this.frequencyToX(band.high,width);
-            ctx.fillStyle = band.color.replace("0.5","0.2");
-            ctx.fillRect(x1,0,x2-x1,height);
-            ctx.fillStyle='#fff';
-            ctx.font='12px Arial';
-            ctx.textAlign='center';
-            ctx.fillText(`${band.name}`,(x1+x2)/2,20);
-            ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
-        }
-        // point d'interrogation
-        ctx.fillStyle="rgba(255,255,255,0.8)";
-        ctx.font = "80px Arial";
-        ctx.textAlign="center";
-        ctx.textBaseline="middle";
-        ctx.fillText("?", width/2, height/2);
-        return; 
-    }
+    ctx.fillRect(0,0,width,height);
 
     // repères dB
     const dBsteps = [20,0,-20,-40,-60,-80,-100];
@@ -450,62 +436,55 @@ class AudioApp {
     ctx.font="10px Arial";
     ctx.textAlign="right";
     dBsteps.forEach(db=>{
-        const y = this.dbToY(db,height);
-        ctx.fillText(db+" dB", width-2, y-2);
+      const y = this.dbToY(db,height);
+      ctx.fillText(db+" dB", width-2, y-2);
     });
 
     // bandes
     for(const key in this.frequencyBands){
-        const band = this.frequencyBands[key];
-        const x1 = this.frequencyToX(band.low,width);
-        const x2 = this.frequencyToX(band.high,width);
+      const band = this.frequencyBands[key];
+      const x1 = this.frequencyToX(band.low,width);
+      const x2 = this.frequencyToX(band.high,width);
 
-        if(this.highlightBand === key){
-            ctx.fillStyle = "rgba(255,255,255,0.3)";
-            ctx.fillRect(x1,0,x2-x1,height);
-        }
-
-        ctx.fillStyle = (this.currentBand===key)?band.color:band.color.replace("0.5","0.2");
+      if(this.showQuestionOverlay){
+        // affichage point d'interrogation
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
         ctx.fillRect(x1,0,x2-x1,height);
-
-        ctx.fillStyle='#fff';
-        ctx.font='12px Arial';
-        ctx.textAlign='center';
-        ctx.fillText(`${band.name}`,(x1+x2)/2,20);
-        ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
+        ctx.fillStyle='white';
+        ctx.font="30px Arial";
+        ctx.textAlign="center";
+        ctx.fillText("?",(x1+x2)/2,height/2);
+      } else if(this.highlightBand === key){
+        const opacity = this.highlightBandOpacity!==undefined ? this.highlightBandOpacity : 0.3;
+        ctx.fillStyle = `rgba(255,255,255,${opacity})`;
+        ctx.fillRect(x1,0,x2-x1,height);
+      }
     }
 
-    // repères Hz
-    const freqs = [20,50,100,200,500,1000,2000,5000,10000,20000];
-    ctx.fillStyle="#aaa";
-    ctx.font="10px Arial";
-    ctx.textAlign="left";
-    freqs.forEach(freq=>{
+    // spectre si pas en question overlay
+    if(!this.showQuestionOverlay){
+      this.analyser.getFloatFrequencyData(this.floatData);
+      const binCount = this.analyser.frequencyBinCount;
+      const nyquist = this.audioContext.sampleRate/2;
+
+      ctx.beginPath();
+      for(let i=0;i<binCount;i++){
+        const freq = i/ binCount * nyquist;
+        const db = this.floatData[i];
         const x = this.frequencyToX(freq,width);
-        ctx.fillText((freq>=1000?(freq/1000)+"k":freq)+"Hz", x+2, height-5);
-    });
-
-    // spectre si audio en cours (mode normal ou réponse)
-    if(this.analyser){
-        this.analyser.getFloatFrequencyData(this.floatData);
-        ctx.beginPath();
-        ctx.strokeStyle='#4facfe';
-        ctx.lineWidth=2;
-        for(let i=0;i<this.floatData.length;i++){
-            const freq = (i*this.audioContext.sampleRate/2)/this.floatData.length;
-            if(freq<20||freq>20000) continue;
-            const x = this.frequencyToX(freq,width);
-            const y = this.dbToY(this.floatData[i],height);
-            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-        }
-        ctx.stroke();
+        const y = this.dbToY(db,height);
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle="#4facfe";
+      ctx.lineWidth=1.5;
+      ctx.stroke();
     }
-}
+  }
 
   animate(){
-    if(!this.isPlaying) { this.animationId = null; return; }
-    this.animationId = requestAnimationFrame(()=>this.animate());
     this.drawSpectrum();
+    this.animationId = requestAnimationFrame(()=>this.animate());
   }
 }
 
