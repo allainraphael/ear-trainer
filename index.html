@@ -247,7 +247,10 @@ class AudioApp {
 
     this.quizCount++;
     const keys = Object.keys(this.frequencyBands);
-    const random = keys[Math.floor(Math.random()*keys.length)];
+    let random;
+    do {
+        random = keys[Math.floor(Math.random()*keys.length)];
+    } while (random === this.quizBand);  // tant que c'est la même que la précédente, on re-tire
     this.quizBand = random;
     this.currentBand = null;
     this.highlightBand = null;
