@@ -304,29 +304,35 @@ class AudioApp {
       ctx.fillText("?",width/2,height/2); return;
     }
 
-    // repères dB
-    [20,0,-20,-40,-60,-80,-100].forEach(db=>{ctx.fillStyle="#aaa";ctx.font="10px Arial";ctx.textAlign="right";ctx.fillText(db+" dB", width-2,this.dbToY(db,height)-2);});
-    
-    // --- bandes ---
-for(const key in this.frequencyBands){
-  const band=this.frequencyBands[key];
-  const x1=this.frequencyToX(band.low,width);
-  const x2=this.frequencyToX(band.high,width);
+   // repères dB
+  [20,0,-20,-40,-60,-80,-100].forEach(db=>{
+    ctx.fillStyle="#aaa";
+    ctx.font="10px Arial";
+    ctx.textAlign="right";
+    ctx.fillText(db+" dB", width-2,this.dbToY(db,height)-2);
+  });
 
-   // clignotement net : blanc si highlightBand
+  // --- bandes ---
+  for(const key in this.frequencyBands){
+    const band = this.frequencyBands[key];
+    const x1 = this.frequencyToX(band.low,width);
+    const x2 = this.frequencyToX(band.high,width);
+
+    // bande principale
+    ctx.fillStyle = (this.currentBand===key) ? band.color : band.color.replace("0.5","0.2");
+    ctx.fillRect(x1,0,x2-x1,height);
+
+    // clignotement blanc superposé
     if(this.highlightBand === key){
-      ctx.fillStyle = "rgba(255,255,255,1)";
-      ctx.fillRect(x1, 0, x2 - x1, height);
-    } else {
-      ctx.fillStyle = (this.currentBand === key) ? band.color : band.color.replace("0.5","0.2");
-      ctx.fillRect(x1, 0, x2 - x1, height);
+      ctx.fillStyle = `rgba(255,255,255,${this.highlightBandOpacity})`;
+      ctx.fillRect(x1,0,x2-x1,height);
     }
 
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${band.name}`, (x1 + x2)/2, 20);
-    ctx.fillText(`${band.low}-${band.high} Hz`, (x1 + x2)/2, 35);
+    ctx.fillStyle='#fff';
+    ctx.font='12px Arial';
+    ctx.textAlign='center';
+    ctx.fillText(`${band.name}`,(x1+x2)/2,20);
+    ctx.fillText(`${band.low}-${band.high} Hz`,(x1+x2)/2,35);
   }
 
     // repères Hz
