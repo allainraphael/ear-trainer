@@ -350,98 +350,81 @@ play(filteredBand=null) {
   dbToY(db,height){ const maxDb=20; let minDb=-100; if(this.floatData){ let minVal=Math.min(...this.floatData); if(minVal>-100) minDb=Math.floor(minVal/10)*10; } const ratio=(db-minDb)/(maxDb-minDb); return height-(ratio*height); }
 
   drawSpectrum() {
-  const ctx = this.ctx, width = this.canvas.width, height = this.canvas.height;
-  
-  // Fond
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
+    const ctx = this.ctx, width = this.canvas.width, height = this.canvas.height;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
 
-  // Afficher repères Hz en bas (toujours)
-  const hzMarks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
-  ctx.fillStyle = "#aaa";
-  ctx.font = "10px Arial";
-  ctx.textAlign = "left";
-  hzMarks.forEach(freq => {
-    const x = this.frequencyToX(freq, width);
-    ctx.fillText(freq >= 1000 ? (freq / 1000) + "k" : freq + "Hz", x + 2, height - 5);
-  });
-
-  // Si mode quiz avec question
-  if (this.modeQuestion) {
+    // --- affichage des bandes ---
     for (const key in this.frequencyBands) {
-      const band = this.frequencyBands[key];
-      const x1 = this.frequencyToX(band.low, width);
-      const x2 = this.frequencyToX(band.high, width);
-      ctx.fillStyle = band.color.replace("0.5", "0.2");
-      ctx.fillRect(x1, 0, x2 - x1, height);
-      
-      // Afficher uniquement le name
-      ctx.fillStyle = '#fff';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(band.name, (x1 + x2) / 2, 20);
+        const band = this.frequencyBands[key];
+        const x1 = this.frequencyToX(band.low, width);
+        const x2 = this.frequencyToX(band.high, width);
+
+        // couleur bande principale
+        ctx.fillStyle = (this.currentBand === key) ? band.color : band.color.replace("0.5", "0.2");
+        ctx.fillRect(x1, 0, x2 - x1, height);
+
+        // clignotement
+        if (this.highlightBand === key) {
+            ctx.fillStyle = `rgba(255,255,255,${this.highlightBandOpacity})`;
+            ctx.fillRect(x1, 0, x2 - x1, height);
+        }
+
+        // nom de la bande
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${band.name}`, (x1 + x2) / 2, 20);
+
+        // valeurs low-high uniquement pour 7 et 10 bandes
+        if (this.modeSelect.value === '7' || this.modeSelect.value === '10') {
+            ctx.fillText(`${band.low}-${band.high} Hz`, (x1 + x2) / 2, 35);
+        }
     }
 
-    // Point d'interrogation
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.font = "80px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("?", width / 2, height / 2);
-    return;
-  }
+    // --- repères dB ---
+    [20, 0, -20, -40, -60, -80, -100].forEach(db => {
+        ctx.fillStyle = "#aaa";
+        ctx.font = "10px Arial";
+        ctx.textAlign = "right";
+        ctx.fillText(db + " dB", width - 2, this.dbToY(db, height) - 2);
+    });
 
-  // Repères dB
-  [20, 0, -20, -40, -60, -80, -100].forEach(db => {
-    ctx.fillStyle = "#aaa";
-    ctx.font = "10px Arial";
-    ctx.textAlign = "right";
-    ctx.fillText(db + " dB", width - 2, this.dbToY(db, height) - 2);
-  });
+    // --- repères Hz (toujours visibles) ---
+    [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].forEach(freq => {
+        ctx.fillStyle = "#aaa";
+        ctx.font = "10px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText((freq >= 1000 ? (freq / 1000) + "k" : freq) + "Hz", this.frequencyToX(freq, width) + 2, height - 5);
+    });
 
-  // Dessiner bandes
-  for (const key in this.frequencyBands) {
-    const band = this.frequencyBands[key];
-    const x1 = this.frequencyToX(band.low, width);
-    const x2 = this.frequencyToX(band.high, width);
-
-    ctx.fillStyle = (this.currentBand === key) ? band.color : band.color.replace("0.5", "0.2");
-    ctx.fillRect(x1, 0, x2 - x1, height);
-
-    // Clignotement quiz
-    if (this.highlightBand === key) {
-      ctx.fillStyle = `rgba(255,255,255,${this.highlightBandOpacity})`;
-      ctx.fillRect(x1, 0, x2 - x1, height);
+    // --- spectre audio (si pas en mode question) ---
+    if (!this.modeQuestion && this.analyser) {
+        this.analyser.getFloatFrequencyData(this.floatData);
+        ctx.beginPath();
+        ctx.strokeStyle = '#4facfe';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < this.floatData.length; i++) {
+            const freq = (i * this.audioContext.sampleRate / 2) / this.floatData.length;
+            if (freq < 20 || freq > 20000) continue;
+            const x = this.frequencyToX(freq, width);
+            const y = this.dbToY(this.floatData[i], height);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
     }
 
-    // Affichage label selon le mode
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    let label = band.name;
-    if (this.modeSelect.value === '7' || this.modeSelect.value === '10') {
-      label += ` (${Math.round(band.low)}-${Math.round(band.high)} Hz)`;
+    // --- mode quiz ---
+    if (this.modeQuestion) {
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.font = "80px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("?", width / 2, height / 2);
     }
-    ctx.fillText(label, (x1 + x2) / 2, 20);
-  }
-
-  // Dessiner spectre audio si analysateur actif
-  if (this.analyser && !this.modeQuestion) {
-    this.analyser.getFloatFrequencyData(this.floatData);
-    ctx.beginPath();
-    ctx.strokeStyle = '#4facfe';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < this.floatData.length; i++) {
-      const freq = (i * this.audioContext.sampleRate / 2) / this.floatData.length;
-      if (freq < 20 || freq > 20000) continue;
-      const x = this.frequencyToX(freq, width);
-      const y = this.dbToY(this.floatData[i], height);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
 }
+
 
 
   animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
