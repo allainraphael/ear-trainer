@@ -490,7 +490,17 @@ play(filteredBand=null) {
     this.newQuizBtn.style.display="inline-block";
     this.quitQuizBtn.style.display="inline-block";
     this.quizActive=false;
-  }
+
+    // --- NOUVEAU : éteindre la bande et stopper le son ---
+    this.highlightBand = null;
+    this.currentBand = null;
+    if(this.source){
+        try { this.source.stop(); } catch(e){}
+        this.isPlaying = false;
+        this.animationId && cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+    }
+}
 
   quitQuiz(){
     this.quizActive=false;
