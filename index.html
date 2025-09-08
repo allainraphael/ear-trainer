@@ -120,21 +120,25 @@ class AudioApp {
     this.updateBands();
   }
 
-  startHighlightClignotement(key) {
-  this.highlightBand = key;
-  this.highlightBandOpacity = 0.6;
-  if (this.clignotementInterval) clearInterval(this.clignotementInterval);
-  let growing = false;
-  this.clignotementInterval = setInterval(() => {
-    if (growing) {
-      this.highlightBandOpacity += 0.1;
-      if (this.highlightBandOpacity >= 0.8) growing = false;
-    } else {
-      this.highlightBandOpacity -= 0.1;
-      if (this.highlightBandOpacity <= 0.2) growing = true;
-    }
-  }, 200);
-}
+  // --- FONCTION CLIGNOTEMENT UNIQUE ---
+  blinkBand(key, {duration=1500, blinks=6, keepVisible=true}={}) {
+    if (this.clignotementInterval) clearInterval(this.clignotementInterval);
+
+    this.highlightBand = key;
+    let visible = false;
+    const halfCycle = duration / (blinks * 2);
+
+    this.clignotementInterval = setInterval(() => {
+      visible = !visible;
+      this.highlightBandOpacity = visible ? 0.8 : 0.2;
+    }, halfCycle);
+
+    setTimeout(() => {
+      clearInterval(this.clignotementInterval);
+      this.clignotementInterval = null;
+      this.highlightBandOpacity = keepVisible ? 0.8 : 0;
+    }, duration);
+  }
 
   bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
@@ -148,7 +152,7 @@ class AudioApp {
     this.volumeSlider.addEventListener("input", ()=>this.setVolume(this.volumeSlider.value));
     this.modeSelect.addEventListener("change", ()=>this.updateBands());
   }
-
+  
   resizeCanvas(){
     this.canvas.width = this.canvas.offsetWidth;
     this.canvas.height = this.canvas.offsetHeight;
@@ -200,10 +204,6 @@ class AudioApp {
     this.currentBand=null;
     this.play();
   }
-
-  // -- Les fonctions loadFile, play, togglePlay, toggleLoop, setVolume, resetBand, handleCanvasClick,
-  // animate, drawSpectrum, frequencyToX, dbToY sont identiques à celles que tu avais.
-  // -- Je les réintègre ici pour que le quiz fonctionne avec tous les modes.
 
   async loadFile(e){
     const file = e.target.files[0];
@@ -385,53 +385,40 @@ class AudioApp {
     this.progressBar.style.width=((this.quizCount-1)/this.totalQuestions*100)+"%";
   }
 
+  // ===== QUIZ =====
   checkQuizAnswer(selectedKey){
-  const correct = selectedKey === this.quizBand;
-  this.currentBand = this.quizBand; // bande toujours allumée en dessous
-  this.modeQuestion = false;
+    const correct = selectedKey === this.quizBand;
+    this.currentBand = this.quizBand; 
+    this.modeQuestion = false;
 
-  if(correct){ 
-    this.quizScore++; 
-    this.quizMessage.textContent = "✅ Correct !"; 
-  } else { 
-    this.quizMessage.textContent = `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; 
-  }
-
-  // ajouter ligne tableau
-  const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
-  this.resultsBody.appendChild(tr);
-
-  // --- CLIGNOTEMENT rapide ---
-  if(this.clignotementInterval) clearInterval(this.clignotementInterval);
-
-  const totalTime = 1500; // ms
-  const blinks = 6; // nombre de clignotements complets
-  const halfCycle = totalTime / (blinks * 2); // durée d'un demi-clignotement
-  let visible = false;
-
-  this.highlightBand = this.quizBand;
-  this.highlightBandOpacity = 0.8;
-
-  this.clignotementInterval = setInterval(()=>{
-    visible = !visible;
-    this.highlightBandOpacity = visible ? 0.8 : 0.2;
-  }, halfCycle);
-
-  // fin du clignotement
-  setTimeout(()=>{
-    clearInterval(this.clignotementInterval);
-    this.highlightBandOpacity = 0.8; // laisse la bande allumée
-    if(this.quizCount < this.totalQuestions) {
-      this.nextQuiz();
-    } else {
-      // arrêter le son après la 10e question
-      if(this.source) {
-        try { this.source.stop(); } catch(e){}
-        this.isPlaying = false;
-      }
-      this.endQuiz();
+    if(correct){ 
+      this.quizScore++; 
+      this.quizMessage.textContent = "✅ Correct !"; 
+    } else { 
+      this.quizMessage.textContent = `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; 
     }
+
+    // ajouter ligne tableau
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
+    this.resultsBody.appendChild(tr);
+
+    // utiliser la nouvelle fonction blink
+    this.blinkBand(this.quizBand, {duration:1500, blinks:6, keepVisible:true});
+
+    // attendre fin du clignotement avant prochaine question
+    setTimeout(()=>{
+      if(this.quizCount < this.totalQuestions) {
+        this.nextQuiz();
+      } else {
+        if(this.source) {
+          try { this.source.stop(); } catch(e){}
+          this.isPlaying = false;
+        }
+        this.endQuiz();
+      }
+    }, 1500);
+  }
   }, totalTime);
 }
 
