@@ -402,33 +402,19 @@ class AudioApp {
   tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
   this.resultsBody.appendChild(tr);
 
-  // --- CLIGNOTEMENT fluide ---
-  if(this.clignotementInterval) clearInterval(this.clignotementInterval);
+  // --- CLIGNOTEMENT franc ---
+let visible = true;
+this.clignotementInterval = setInterval(()=>{
+  this.highlightBand = visible ? this.quizBand : null;
+  visible = !visible;
+}, 125); // 125 ms = 6 clignotements en 1500 ms
 
-  const totalTime = 1500; // ms
-  const cycles = 6; // nombre de clignotements complets
-  const stepsPerCycle = 10; // combien de petits changements pour un cycle
-  const totalSteps = cycles * stepsPerCycle;
-  const intervalTime = totalTime / totalSteps; // durée d'un pas
-  let step = 0;
-
-  this.highlightBandOpacity = 0; // début du fade
-  this.clignotementInterval = setInterval(()=>{
-    const cycleStep = step % stepsPerCycle;
-    const phase = cycleStep / (stepsPerCycle - 1); // 0 → 1
-    // fade in/out sinusoidal
-    this.highlightBandOpacity = Math.sin(phase * Math.PI);
-    this.highlightBand = this.quizBand;
-    step++;
-    if(step >= totalSteps){
-      clearInterval(this.clignotementInterval);
-      this.highlightBand = null;
-      this.highlightBandOpacity = 0;
-      if(this.quizCount < this.totalQuestions) this.nextQuiz();
-      else this.endQuiz();
-    }
-  }, intervalTime);
-}
+setTimeout(()=>{
+  clearInterval(this.clignotementInterval);
+  this.highlightBand = this.quizBand; // laisse la bande allumée après clignotement
+  if(this.quizCount<this.totalQuestions) this.nextQuiz();
+  else this.endQuiz();
+}, 1500); // durée totale du clignotement
 
 
   endQuiz(){
