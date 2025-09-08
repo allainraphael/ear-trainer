@@ -249,38 +249,63 @@ class AudioApp {
     return buffer;
   }
 
-  play(filteredBand=null){
+  // ===== INITIALISATION AUDIO =====
+initAudio() {
+    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if(!this.gainNode) {
+        this.gainNode = this.audioContext.createGain();
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 2048;
+        this.floatData = new Float32Array(this.analyser.frequencyBinCount);
+
+        // Chaîne : gain → analyser → destination
+        this.gainNode.connect(this.analyser);
+        this.analyser.connect(this.audioContext.destination);
+
+        this.setVolume(this.volumeSlider.value);
+    }
+}
+
+// ===== PLAY =====
+play(filteredBand=null) {
     if(!this.buffer) return;
     if(this.audioContext.state === "suspended") this.audioContext.resume();
 
-    if(this.source){ try{ this.source.stop(); }catch(e){} this.source.disconnect(); }
+    // Stop si source déjà existante
+    if(this.source){ 
+        try{ this.source.stop(); } catch(e) {}
+        this.source.disconnect();
+    }
 
     this.source = this.audioContext.createBufferSource();
     this.source.buffer = this.buffer;
     this.source.loop = this.isLooping;
 
-    if(this.filterNode){ this.filterNode.disconnect(); this.filterNode=null; }
+    // Déconnecter ancien filtre
+    if(this.filterNode){ this.filterNode.disconnect(); this.filterNode = null; }
 
-    const bandKey = filteredBand||this.currentBand;
+    const bandKey = filteredBand || this.currentBand;
     if(bandKey){
-      const band = this.frequencyBands[bandKey];
-      const filter = this.audioContext.createBiquadFilter();
-      filter.type="bandpass";
-      filter.frequency.value = Math.sqrt(band.low*band.high);
-      filter.Q.value = filter.frequency.value/(band.high-band.low);
-      this.source.connect(filter);
-      filter.connect(this.gainNode);
-      this.filterNode=filter;
+        const band = this.frequencyBands[bandKey];
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = Math.sqrt(band.low * band.high);
+        filter.Q.value = filter.frequency.value / (band.high - band.low);
+
+        // Toujours passer par gainNode → analyser
+        this.source.connect(filter);
+        filter.connect(this.gainNode);
+        this.filterNode = filter;
     } else {
-      this.source.connect(this.gainNode);
+        this.source.connect(this.gainNode);
     }
 
     this.startTime = this.audioContext.currentTime - this.pauseTime;
-    this.source.start(0,this.pauseTime);
-    this.isPlaying=true;
+    this.source.start(0, this.pauseTime);
+    this.isPlaying = true;
 
     if(!this.animationId) this.animate();
-  }
+}
 
   togglePlay(){
     if(!this.isPlaying){ this.play(); }
