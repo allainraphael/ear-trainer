@@ -381,7 +381,7 @@ for(const key in this.frequencyBands){
 
   checkQuizAnswer(selectedKey){
   const correct = selectedKey === this.quizBand;
-  this.currentBand = this.quizBand; // allume la bande en dessous
+  this.currentBand = this.quizBand; // bande toujours allumée en dessous
   this.modeQuestion = false;
 
   if(correct){ 
@@ -396,23 +396,34 @@ for(const key in this.frequencyBands){
   tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
   this.resultsBody.appendChild(tr);
 
-  // --- CLIGNOTEMENT 6 fois en 1500ms ---
-  let visible = true;
-  let flashes = 0;
-  const maxFlashes = 6;
+  // --- CLIGNOTEMENT fluide ---
   if(this.clignotementInterval) clearInterval(this.clignotementInterval);
+
+  const totalTime = 1500; // ms
+  const cycles = 6; // nombre de clignotements complets
+  const stepsPerCycle = 10; // combien de petits changements pour un cycle
+  const totalSteps = cycles * stepsPerCycle;
+  const intervalTime = totalTime / totalSteps; // durée d'un pas
+  let step = 0;
+
+  this.highlightBandOpacity = 0; // début du fade
   this.clignotementInterval = setInterval(()=>{
-    this.highlightBand = visible ? this.quizBand : null; // clignotement blanc au-dessus
-    visible = !visible;
-    flashes++;
-    if(flashes >= maxFlashes){
+    const cycleStep = step % stepsPerCycle;
+    const phase = cycleStep / (stepsPerCycle - 1); // 0 → 1
+    // fade in/out sinusoidal
+    this.highlightBandOpacity = Math.sin(phase * Math.PI);
+    this.highlightBand = this.quizBand;
+    step++;
+    if(step >= totalSteps){
       clearInterval(this.clignotementInterval);
       this.highlightBand = null;
+      this.highlightBandOpacity = 0;
       if(this.quizCount < this.totalQuestions) this.nextQuiz();
       else this.endQuiz();
     }
-  }, 1500 / maxFlashes);
+  }, intervalTime);
 }
+
 
   endQuiz(){
     this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
