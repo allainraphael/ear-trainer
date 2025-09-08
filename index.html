@@ -133,7 +133,7 @@ class AudioApp {
       this.highlightBandOpacity -= 0.1;
       if (this.highlightBandOpacity <= 0.2) growing = true;
     }
-  }, 100);
+  }, 200);
 }
 
   bindEvents(){
@@ -397,18 +397,19 @@ for(const key in this.frequencyBands){
   this.resultsBody.appendChild(tr);
 
   // --- CLIGNOTEMENT franc ---
-  let visible = true;
-  this.clignotementInterval = setInterval(()=>{
-    this.highlightBand = visible ? this.quizBand : null;
-    visible = !visible;
-  }, 200); // vitesse du clignotement
-
-  setTimeout(()=>{
-    clearInterval(this.clignotementInterval);
-    this.highlightBand = null;
-    if(this.quizCount<this.totalQuestions) this.nextQuiz();
-    else this.endQuiz();
-  }, 1200); // durée totale du clignotement
+  // --- CLIGNOTEMENT franc ---
+let visible = true;
+this.clignotementInterval = setInterval(()=>{
+  this.highlightBand = visible ? this.quizBand : null;
+  visible = !visible;
+}, 120); // vitesse du clignotement (plus rapide)
+ 
+setTimeout(()=>{
+  clearInterval(this.clignotementInterval);
+  this.highlightBand = null;
+  if(this.quizCount<this.totalQuestions) this.nextQuiz();
+  else this.endQuiz();
+}, 1500); // durée totale du clignotement en ms
 }
 
   endQuiz(){
