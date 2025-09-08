@@ -16,21 +16,22 @@ button, select { margin:5px; padding:10px 20px; border:none; border-radius:8px; 
 #replayBtn, #newQuizBtn, #quitQuizBtn { display:none; margin-top:15px; background:#4caf50; color:white; }
 #newQuizBtn { background:#2196F3; }
 #quitQuizBtn { background:#f44336; }
-/* barre de progression */
 #progressContainer { width:80%; max-width:600px; height:20px; background:#333; border-radius:10px; margin:15px auto; overflow:hidden; display:none; }
 #progressBar { height:100%; width:0%; background:#4facfe; transition:width 0.5s ease; }
 </style>
 </head>
 <body>
 <h1>Ear Training</h1>
+
 <input type="file" id="fileInput" accept="audio/*"><br>
 
-  <select id="sourceSelect">
+<select id="sourceSelect">
   <option value="file" selected>🎵 Fichier audio</option>
   <option value="white">🌫️ Bruit blanc</option>
   <option value="pink">🌸 Bruit rose</option>
 </select>
 
+<br>
 <select id="modeSelect">
   <option value="7" selected>7 bandes</option>
   <option value="10">10 bandes</option>
@@ -73,6 +74,7 @@ class AudioApp {
   constructor() {
     // DOM
     this.fileInput = document.getElementById("fileInput");
+    this.sourceSelect = document.getElementById("sourceSelect");
     this.playBtn = document.getElementById("playBtn");
     this.loopBtn = document.getElementById("loopBtn");
     this.resetBtn = document.getElementById("resetBtn");
@@ -89,7 +91,6 @@ class AudioApp {
     this.progressContainer = document.getElementById("progressContainer");
     this.progressBar = document.getElementById("progressBar");
     this.modeSelect = document.getElementById("modeSelect");
-    this.sourceSelect = document.getElementById("sourceSelect");
 
     // audio
     this.audioContext = null;
@@ -116,7 +117,7 @@ class AudioApp {
     this.quizScore = 0;
     this.totalQuestions = 10;
 
-    this.frequencyBands = {}; // initialisation dynamique
+    this.frequencyBands = {}; // défini dynamiquement
 
     this.bindEvents();
     this.resizeCanvas();
@@ -127,65 +128,9 @@ class AudioApp {
     this.updateBands();
   }
 
-  generateNoise(type){
-  const sampleRate = this.audioContext.sampleRate;
-  const duration = 5; // secondes (modifiable)
-  const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate);
-  const data = buffer.getChannelData(0);
-
-  if(type === "white"){
-    for(let i=0;i<data.length;i++){
-      data[i] = Math.random() * 2 - 1; // bruit blanc uniforme
-    }
-  } else if(type === "pink"){
-    // Pink noise par filtre IIR approximatif
-    let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
-    for(let i=0;i<data.length;i++){
-      const white = Math.random() * 2 - 1;
-      b0 = 0.99886 * b0 + white * 0.0555179;
-      b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.96900 * b2 + white * 0.1538520;
-      b3 = 0.86650 * b3 + white * 0.3104856;
-      b4 = 0.55000 * b4 + white * 0.5329522;
-      b5 = -0.7616 * b5 - white * 0.0168980;
-      data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-      data[i] *= 0.11; // normalisation
-      b6 = white * 0.115926;
-    }
-  }
-
-  return buffer;
-}
-
-  startHighlightClignotement(key) {
-  this.highlightBand = key;
-  this.highlightBandOpacity = 0.6;
-  if (this.clignotementInterval) clearInterval(this.clignotementInterval);
-  let growing = false;
-  this.clignotementInterval = setInterval(() => {
-    if (growing) {
-      this.highlightBandOpacity += 0.1;
-      if (this.highlightBandOpacity >= 0.8) growing = false;
-    } else {
-      this.highlightBandOpacity -= 0.1;
-      if (this.highlightBandOpacity <= 0.2) growing = true;
-    }
-  }, 200);
-}
-
-  handleSourceChange(){
-  const type = this.sourceSelect.value;
-  if(type === "file"){
-    this.buffer = null;
-  } else {
-    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    this.buffer = this.generateNoise(type);
-    this.play(); // lance immédiatement le bruit
-  }
-}
-  
   bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
+    this.sourceSelect.addEventListener("change", ()=>this.handleSourceChange());
     this.playBtn.addEventListener("click", ()=>this.togglePlay());
     this.loopBtn.addEventListener("click", ()=>this.toggleLoop());
     this.resetBtn.addEventListener("click", ()=>this.resetBand());
@@ -195,7 +140,6 @@ class AudioApp {
     this.quitQuizBtn.addEventListener("click", ()=>this.quitQuiz());
     this.volumeSlider.addEventListener("input", ()=>this.setVolume(this.volumeSlider.value));
     this.modeSelect.addEventListener("change", ()=>this.updateBands());
-    this.sourceSelect.addEventListener("change", ()=>this.handleSourceChange());
   }
 
   resizeCanvas(){
@@ -203,139 +147,132 @@ class AudioApp {
     this.canvas.height = this.canvas.offsetHeight;
   }
 
-  updateBands(){
-    const mode = this.modeSelect.value;
-    if(mode==='7'){
-      this.frequencyBands = {
-        sub:{low:20,high:60,color:'rgba(255,0,0,0.5)',name:'Sub'},
-        bass:{low:60,high:250,color:'rgba(255,165,0,0.5)',name:'Bass'},
-        lowmid:{low:250,high:500,color:'rgba(255,255,0,0.5)',name:'Low Mid'},
-        mid:{low:500,high:2000,color:'rgba(0,255,0,0.5)',name:'Mid'},
-        highmid:{low:2000,high:4000,color:'rgba(0,255,255,0.5)',name:'High Mid'},
-        presence:{low:4000,high:6000,color:'rgba(0,0,255,0.5)',name:'Presence'},
-        brilliance:{low:6000,high:20000,color:'rgba(255,0,255,0.5)',name:'Brilliance'}
-      };
-    } else if(mode==='10'){
-      this.frequencyBands = {
-        b1:{low:20,high:65,color:'rgba(255,0,0,0.5)',name:'Band1'},
-        b2:{low:65,high:131,color:'rgba(255,165,0,0.5)',name:'Band2'},
-        b3:{low:131,high:262,color:'rgba(255,255,0,0.5)',name:'Band3'},
-        b4:{low:262,high:523,color:'rgba(0,255,0,0.5)',name:'Band4'},
-        b5:{low:523,high:1046,color:'rgba(0,255,255,0.5)',name:'Band5'},
-        b6:{low:1046,high:2093,color:'rgba(0,0,255,0.5)',name:'Band6'},
-        b7:{low:2093,high:4186,color:'rgba(255,0,255,0.5)',name:'Band7'},
-        b8:{low:4186,high:8372,color:'rgba(255,128,128,0.5)',name:'Band8'},
-        b9:{low:8372,high:16744,color:'rgba(128,255,128,0.5)',name:'Band9'},
-        b10:{low:16744,high:20000,color:'rgba(128,128,255,0.5)',name:'Band10'}
-      };
-    } else if(mode==='15'){
-      const freqs=[25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000];
-      this.frequencyBands = {};
-      for(let i=0;i<freqs.length;i++){
-        const low = i===0?20:(freqs[i-1]+freqs[i])/2;
-        const high = i===freqs.length-1?20000:(freqs[i]+freqs[i+1])/2;
-        this.frequencyBands[`b${i+1}`]={low,high,color:`hsla(${i*24},100%,50%,0.5)`,name:`Band${i+1}`};
-      }
-    } else if(mode==='31'){
-      const freqs=[20, 25, 32, 40, 50, 63, 80, 100, 125, 160,200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
-      this.frequencyBands = {};
-      for(let i=0;i<freqs.length;i++){
-        const low = i===0?20:(freqs[i-1]+freqs[i])/2;
-        const high = i===freqs.length-1?20000:(freqs[i]+freqs[i+1])/2;
-        this.frequencyBands[`b${i+1}`]={low,high,color:`hsla(${i*12},100%,50%,0.5)`,name:`Band${i+1}`};
+  // --- bruit blanc & rose ---
+  generateNoise(type){
+    const sampleRate = this.audioContext.sampleRate;
+    const duration = 3; // secondes
+    const buffer = this.audioContext.createBuffer(1, sampleRate * duration, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    if(type === "white"){
+      for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+    } else if(type === "pink"){
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for(let i=0;i<data.length;i++){
+        const white = Math.random()*2-1;
+        b0 = 0.99886*b0 + white*0.0555179;
+        b1 = 0.99332*b1 + white*0.0750759;
+        b2 = 0.96900*b2 + white*0.1538520;
+        b3 = 0.86650*b3 + white*0.3104856;
+        b4 = 0.55000*b4 + white*0.5329522;
+        b5 = -0.7616*b5 - white*0.0168980;
+        data[i] = b0+b1+b2+b3+b4+b5+b6+white*0.5362;
+        data[i]*=0.11;
+        b6 = white*0.115926;
       }
     }
-    // Réinitialisation pour mode libre
-    this.currentBand=null;
-    this.play();
+    return buffer;
   }
 
-  // -- Les fonctions loadFile, play, togglePlay, toggleLoop, setVolume, resetBand, handleCanvasClick,
-  // animate, drawSpectrum, frequencyToX, dbToY sont identiques à celles que tu avais.
-  // -- Je les réintègre ici pour que le quiz fonctionne avec tous les modes.
+  handleSourceChange(){
+    const type = this.sourceSelect.value;
+    if(type === "file"){
+      this.buffer = null;
+    } else {
+      if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.buffer = this.generateNoise(type);
+      this.play(); // lance directement le bruit
+    }
+  }
 
   async loadFile(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const arrayBuffer = await file.arrayBuffer();
-  this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
-  this.sourceSelect.value = "file"; // remet sur fichier
-  this.pauseTime = 0;
-  this.play();
-
-    if(!this.gainNode){
-      this.gainNode = this.audioContext.createGain();
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 2048;
-      this.floatData = new Float32Array(this.analyser.frequencyBinCount);
-      this.gainNode.connect(this.analyser);
-      this.analyser.connect(this.audioContext.destination);
-      this.setVolume(this.volumeSlider.value);
-    }
-
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await file.arrayBuffer();
+    this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+    this.sourceSelect.value = "file";
     this.pauseTime = 0;
     this.play();
   }
 
   play(){
-  if(!this.buffer) return;
+    if(!this.buffer) return;
 
-  // si déjà une source en cours, on l’arrête
-  if(this.source) {
-    try { this.source.stop(); } catch(e){}
-  }
-
-  this.source = this.audioContext.createBufferSource();
-  this.source.buffer = this.buffer;
-  this.source.loop = this.isLooping;
-  this.source.connect(this.filterNode);
-  this.source.start(0, this.pauseTime);
-
-  this.isPlaying = true;
-  this.playBtn.textContent = "⏸️ Pause";
-
-    if(this.filterNode){ this.filterNode.disconnect(); this.filterNode=null; }
-
-    const bandKey = filteredBand||this.currentBand;
-    if(bandKey){
-      const band = this.frequencyBands[bandKey];
-      const filter = this.audioContext.createBiquadFilter();
-      filter.type="bandpass";
-      filter.frequency.value = Math.sqrt(band.low*band.high);
-      filter.Q.value = filter.frequency.value/(band.high-band.low);
-      this.source.connect(filter);
-      filter.connect(this.gainNode);
-      this.filterNode=filter;
-    } else {
-      this.source.connect(this.gainNode);
+    // si une source existe déjà, on l'arrête
+    if(this.source){
+      try { this.source.stop(); } catch(e){}
     }
 
-    this.startTime = this.audioContext.currentTime - this.pauseTime;
-    this.source.start(0,this.pauseTime);
-    this.isPlaying=true;
+    this.source = this.audioContext.createBufferSource();
+    this.source.buffer = this.buffer;
+    this.source.loop = this.isLooping;
 
-    if(!this.animationId) this.animate();
+    // pipeline audio
+    if(!this.gainNode){
+      this.gainNode = this.audioContext.createGain();
+      this.filterNode = this.audioContext.createBiquadFilter();
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.filterNode.connect(this.gainNode);
+      this.gainNode.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
+    }
+
+    this.source.connect(this.filterNode);
+    this.source.start(0, this.pauseTime);
+
+    this.isPlaying = true;
+    this.playBtn.textContent = "⏸️ Pause";
+    this.animate();
+  }
+
+  pause(){
+    if(this.source){
+      try { this.source.stop(); } catch(e){}
+    }
+    this.isPlaying = false;
+    this.playBtn.textContent = "▶️ Play";
   }
 
   togglePlay(){
-    if(!this.isPlaying){ this.play(); }
-    else{
-      if(this.source) this.source.stop();
-      this.pauseTime = this.audioContext.currentTime - this.startTime;
-      this.isPlaying = false;
-      if(this.animationId) { cancelAnimationFrame(this.animationId); this.animationId=null; }
-    }
+    if(this.isPlaying){ this.pause(); }
+    else { this.play(); }
   }
 
   toggleLoop(){
-    this.isLooping=!this.isLooping;
+    this.isLooping = !this.isLooping;
     this.loopBtn.classList.toggle("active", this.isLooping);
-    this.loopBtn.textContent=this.isLooping?"🔁 Boucle ON":"🔁 Boucle OFF";
-    if(this.source) this.source.loop=this.isLooping;
+    this.loopBtn.textContent = this.isLooping ? "🔁 Boucle ON" : "➡️ Lecture simple";
+    if(this.source) this.source.loop = this.isLooping;
   }
 
-  setVolume(val){ if(this.gainNode) this.gainNode.gain.value=val; }
+  setVolume(v){
+    if(this.gainNode) this.gainNode.gain.value = v;
+  }
+
+  // --- dessin FFT ---
+  animate(){
+    if(!this.isPlaying) return;
+    requestAnimationFrame(()=>this.animate());
+    if(!this.analyser) return;
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    this.analyser.getByteFrequencyData(dataArray);
+
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    const barWidth = w / bufferLength;
+    this.ctx.fillStyle = "#000";
+    this.ctx.fillRect(0,0,w,h);
+
+    for(let i=0;i<bufferLength;i++){
+      const v = dataArray[i];
+      const y = v/255*h;
+      this.ctx.fillStyle = `rgb(${v},${255-v},128)`;
+      this.ctx.fillRect(i*barWidth, h-y, barWidth, y);
+    }
+  }
 
   resetBand(){ this.currentBand=null; if(this.isPlaying) this.play(); }
 
