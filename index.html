@@ -380,36 +380,38 @@ for(const key in this.frequencyBands){
   }
 
   checkQuizAnswer(selectedKey){
-  const correct = selectedKey===this.quizBand;
-  this.highlightBand = this.quizBand;
-  this.modeQuestion=false;
+  const correct = selectedKey === this.quizBand;
+  this.currentBand = this.quizBand; // allume la bande en dessous
+  this.modeQuestion = false;
 
   if(correct){ 
     this.quizScore++; 
-    this.quizMessage.textContent="✅ Correct !"; 
+    this.quizMessage.textContent = "✅ Correct !"; 
   } else { 
-    this.quizMessage.textContent=`❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; 
+    this.quizMessage.textContent = `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; 
   }
 
   // ajouter ligne tableau
-  const tr=document.createElement("tr");
-  tr.innerHTML=`<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
   this.resultsBody.appendChild(tr);
 
-  // --- CLIGNOTEMENT franc ---
-  // --- CLIGNOTEMENT franc ---
-let visible = true;
-this.clignotementInterval = setInterval(()=>{
-  this.highlightBand = visible ? this.quizBand : null;
-  visible = !visible;
-}, 120); // vitesse du clignotement (plus rapide)
- 
-setTimeout(()=>{
-  clearInterval(this.clignotementInterval);
-  this.highlightBand = null;
-  if(this.quizCount<this.totalQuestions) this.nextQuiz();
-  else this.endQuiz();
-}, 1500); // durée totale du clignotement en ms
+  // --- CLIGNOTEMENT 6 fois en 1500ms ---
+  let visible = true;
+  let flashes = 0;
+  const maxFlashes = 6;
+  if(this.clignotementInterval) clearInterval(this.clignotementInterval);
+  this.clignotementInterval = setInterval(()=>{
+    this.highlightBand = visible ? this.quizBand : null; // clignotement blanc au-dessus
+    visible = !visible;
+    flashes++;
+    if(flashes >= maxFlashes){
+      clearInterval(this.clignotementInterval);
+      this.highlightBand = null;
+      if(this.quizCount < this.totalQuestions) this.nextQuiz();
+      else this.endQuiz();
+    }
+  }, 1500 / maxFlashes);
 }
 
   endQuiz(){
