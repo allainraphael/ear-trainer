@@ -26,10 +26,10 @@ button, select { margin:5px; padding:10px 20px; border:none; border-radius:8px; 
 <input type="file" id="fileInput" accept="audio/*"><br>
 
 <select id="modeSelect">
-  <option value="7">Mode 7 bandes</option>
-  <option value="10">Mode 10 bandes</option>
-  <option value="15">Mode 15 bandes</option>
-  <option value="31">Mode 31 bandes</option>
+  <option value="7" selected>7 bandes</option>
+  <option value="10">10 bandes</option>
+  <option value="15">15 bandes</option>
+  <option value="31">31 bandes</option>
 </select>
 
 <button id="playBtn">▶️ Play/Pause</button>
@@ -83,6 +83,7 @@ class AudioApp {
     this.progressContainer = document.getElementById("progressContainer");
     this.progressBar = document.getElementById("progressBar");
     this.modeSelect = document.getElementById("modeSelect");
+    this.setModeBands("7"); // initialise en mode 7 bandes dès le lancement
 
     // audio
     this.audioContext = null;
