@@ -173,6 +173,17 @@ class AudioApp {
   }, 200);
 }
 
+  handleSourceChange(){
+  const type = this.sourceSelect.value;
+  if(type === "file"){
+    this.buffer = null;
+  } else {
+    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    this.buffer = this.generateNoise(type);
+    this.play(); // lance immédiatement le bruit
+  }
+}
+  
   bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
     this.playBtn.addEventListener("click", ()=>this.togglePlay());
@@ -244,14 +255,14 @@ class AudioApp {
   // -- Je les réintègre ici pour que le quiz fonctionne avec tous les modes.
 
   async loadFile(e){
-    const file = e.target.files[0];
-    if(!file) return;
-    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuffer = await file.arrayBuffer();
-    this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
-    this.sourceSelect.value = "file"; // remet sur fichier
-    this.pauseTime = 0;
-    this.play();
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const arrayBuffer = await file.arrayBuffer();
+  this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+  this.sourceSelect.value = "file"; // remet sur fichier
+  this.pauseTime = 0;
+  this.play();
 
     if(!this.gainNode){
       this.gainNode = this.audioContext.createGain();
@@ -267,15 +278,22 @@ class AudioApp {
     this.play();
   }
 
-  play(filteredBand=null){
-    if(!this.buffer) return;
-    if(this.audioContext.state === "suspended") this.audioContext.resume();
+  play(){
+  if(!this.buffer) return;
 
-    if(this.source){ try{ this.source.stop(); }catch(e){} this.source.disconnect(); }
+  // si déjà une source en cours, on l’arrête
+  if(this.source) {
+    try { this.source.stop(); } catch(e){}
+  }
 
-    this.source = this.audioContext.createBufferSource();
-    this.source.buffer = this.buffer;
-    this.source.loop = this.isLooping;
+  this.source = this.audioContext.createBufferSource();
+  this.source.buffer = this.buffer;
+  this.source.loop = this.isLooping;
+  this.source.connect(this.filterNode);
+  this.source.start(0, this.pauseTime);
+
+  this.isPlaying = true;
+  this.playBtn.textContent = "⏸️ Pause";
 
     if(this.filterNode){ this.filterNode.disconnect(); this.filterNode=null; }
 
@@ -384,8 +402,6 @@ class AudioApp {
       ctx.stroke();
     }
   }
-
-  animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
 
   handleSourceChange(){
   const type = this.sourceSelect.value;
