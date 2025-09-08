@@ -120,6 +120,22 @@ class AudioApp {
     this.updateBands();
   }
 
+  startHighlightClignotement(key) {
+  this.highlightBand = key;
+  this.highlightBandOpacity = 0.6;
+  if (this.clignotementInterval) clearInterval(this.clignotementInterval);
+  let growing = false;
+  this.clignotementInterval = setInterval(() => {
+    if (growing) {
+      this.highlightBandOpacity += 0.1;
+      if (this.highlightBandOpacity >= 0.8) growing = false;
+    } else {
+      this.highlightBandOpacity -= 0.1;
+      if (this.highlightBandOpacity <= 0.2) growing = true;
+    }
+  }, 100);
+}
+
   bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
     this.playBtn.addEventListener("click", ()=>this.togglePlay());
@@ -355,7 +371,37 @@ class AudioApp {
 
   checkQuizAnswer(selectedKey){
     const correct = selectedKey===this.quizBand;
-    this.highlightBand = this.quizBand;
+    checkQuizAnswer(selectedKey){
+  const correct = selectedKey===this.quizBand;
+  this.modeQuestion=false;
+
+  if(correct){
+    this.quizScore++;
+    this.quizMessage.textContent="✅ Correct !";
+  } else {
+    this.quizMessage.textContent=`❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`;
+  }
+
+  // clignotement sur la bonne bande
+  this.startHighlightClignotement(this.quizBand);
+
+  // ajouter ligne tableau
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
+  this.resultsBody.appendChild(tr);
+
+  // arrêt clignotement après 1.5s puis passage à la suite
+  setTimeout(()=>{
+    clearInterval(this.clignotementInterval);
+    this.clignotementInterval=null;
+    this.highlightBand=null;
+    this.highlightBandOpacity=0.3;
+
+    if(this.quizCount<this.totalQuestions) this.nextQuiz();
+    else this.endQuiz();
+  },1500);
+}
+
     this.modeQuestion=false;
     if(correct){ this.quizScore++; this.quizMessage.textContent="✅ Correct !"; } else { this.quizMessage.textContent=`❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; }
     // ajouter ligne tableau
