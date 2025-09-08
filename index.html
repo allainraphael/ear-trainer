@@ -370,8 +370,6 @@ class AudioApp {
   }
 
   checkQuizAnswer(selectedKey){
-    const correct = selectedKey===this.quizBand;
-    checkQuizAnswer(selectedKey){
   const correct = selectedKey===this.quizBand;
   this.modeQuestion=false;
 
@@ -401,21 +399,6 @@ class AudioApp {
     else this.endQuiz();
   },1500);
 }
-
-    this.modeQuestion=false;
-    if(correct){ this.quizScore++; this.quizMessage.textContent="✅ Correct !"; } else { this.quizMessage.textContent=`❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; }
-    // ajouter ligne tableau
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
-    this.resultsBody.appendChild(tr);
-    this.highlightBandOpacity=0.6;
-    setTimeout(()=>{
-      this.highlightBand=null;
-      this.highlightBandOpacity=0.3;
-      if(this.quizCount<this.totalQuestions) this.nextQuiz();
-      else this.endQuiz();
-    },1000);
-  }
 
   endQuiz(){
     this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
