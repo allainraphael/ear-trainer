@@ -422,8 +422,16 @@ class AudioApp {
   setTimeout(()=>{
     clearInterval(this.clignotementInterval);
     this.highlightBandOpacity = 0.8; // laisse la bande allumée
-    if(this.quizCount < this.totalQuestions) this.nextQuiz();
-    else this.endQuiz();
+    if(this.quizCount < this.totalQuestions) {
+      this.nextQuiz();
+    } else {
+      // arrêter le son après la 10e question
+      if(this.source) {
+        try { this.source.stop(); } catch(e){}
+        this.isPlaying = false;
+      }
+      this.endQuiz();
+    }
   }, totalTime);
 }
 
