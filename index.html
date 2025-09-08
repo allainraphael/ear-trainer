@@ -397,21 +397,21 @@ for(const key in this.frequencyBands){
   this.resultsBody.appendChild(tr);
 
   // --- CLIGNOTEMENT 6 fois en 1500ms ---
-   let flashes = 0;
-    if(this.clignotementInterval) clearInterval(this.clignotementInterval);
-    this.clignotementInterval = setInterval(()=>{
-        this.highlightBandOpacity = (this.highlightBandOpacity === 0.3) ? 0.8 : 0.3;
-        flashes++;
-        if(flashes >= 6){ 
-            clearInterval(this.clignotementInterval); 
-            this.highlightBandOpacity = 0.3;
-        }
-    }, 100);
-
-    setTimeout(()=>{
-        if(this.source){ try{ this.source.stop(); }catch(e){} }
-        this.isPlaying = false;
-    }, duration);
+  let visible = true;
+  let flashes = 0;
+  const maxFlashes = 6;
+  if(this.clignotementInterval) clearInterval(this.clignotementInterval);
+  this.clignotementInterval = setInterval(()=>{
+    this.highlightBand = visible ? this.quizBand : null; // clignotement blanc au-dessus
+    visible = !visible;
+    flashes++;
+    if(flashes >= maxFlashes){
+      clearInterval(this.clignotementInterval);
+      this.highlightBand = null;
+      if(this.quizCount < this.totalQuestions) this.nextQuiz();
+      else this.endQuiz();
+    }
+  }, 1500 / maxFlashes);
 }
 
   endQuiz(){
