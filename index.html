@@ -70,7 +70,14 @@ button, select { margin:5px; padding:10px 20px; border:none; border-radius:8px; 
 </div>
 
 <script>
-class AudioApp {
+function formatFreqLabel(freq) {
+  if (freq >= 1000) {
+    return (freq / 1000).toFixed(1).replace(/\.0$/, "") + " kHz";
+  }
+  return freq + " Hz";
+}
+
+  class AudioApp {
   constructor() {
     // DOM
     this.fileInput = document.getElementById("fileInput");
@@ -127,13 +134,6 @@ class AudioApp {
 
     this.updateBands();
   }
-
-  function formatFreqLabel(freq) {
-  if (freq >= 1000) {
-    return (freq / 1000).toFixed(1).replace(/\.0$/, "") + " kHz";
-  }
-  return freq + " Hz";
-}
 
     bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
@@ -236,14 +236,17 @@ class AudioApp {
   }
 
   selectNoise(){
-    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const val = this.noiseSelect.value;
-    if(val === "white") this.buffer = this.generateWhiteNoise(10);
-    else if(val === "pink") this.buffer = this.generatePinkNoise(10);
-    else this.buffer = null;
-    this.pauseTime = 0;
-    this.play();
-  }
+  // crée ou initialise la chaîne audio (gainNode + analyser) si nécessaire
+  if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  this.initAudio(); // <-- IMPORTANT
+
+  const val = this.noiseSelect.value;
+  if(val === "white") this.buffer = this.generateWhiteNoise(10);
+  else if(val === "pink") this.buffer = this.generatePinkNoise(10);
+  else this.buffer = null;
+  this.pauseTime = 0;
+  this.play();
+}
 
   generateWhiteNoise(duration=5){
     const sampleRate = this.audioContext.sampleRate;
@@ -431,8 +434,6 @@ play(filteredBand=null) {
         ctx.fillText("?", width / 2, height / 2);
     }
 }
-
-
 
   animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
 
