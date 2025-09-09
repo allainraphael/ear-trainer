@@ -144,13 +144,6 @@ class AudioApp {
 
   resizeCanvas(){ this.canvas.width = this.canvas.offsetWidth; this.canvas.height = this.canvas.offsetHeight; }
 
-  function formatFreqLabel(freq) {
-  if (freq >= 1000) {
-    return (freq / 1000).toFixed(1).replace(/\.0$/, "") + " kHz";
-  }
-  return freq + " Hz";
-}
-
   updateBands() {
   const mode = this.modeSelect.value;
 
@@ -190,7 +183,7 @@ class AudioApp {
         low,
         high,
         color: `hsla(${i * 24},100%,50%,0.5)`,
-        name: formatFreqLabel(freqs[i])
+        name: `${freqs[i]} Hz`
       };
     }
   } 
@@ -205,7 +198,7 @@ class AudioApp {
         low,
         high,
         color: `hsla(${i * 12},100%,50%,0.5)`,
-        name: formatFreqLabel(freqs[i])
+        name: `${freqs[i]} Hz`
       };
     }
   }
