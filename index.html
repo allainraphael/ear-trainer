@@ -194,21 +194,31 @@ function formatFreqLabel(freq) {
       };
     }
   } 
-  else if (mode === '31') {
-    const freqs = [20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
-    this.frequencyBands = {};
+  } else if(mode==='31'){
+  const freqs=[20, 25, 32, 40, 50, 63, 80, 100, 125, 160,200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
+  this.frequencyBands = {};
+  for(let i=0;i<freqs.length;i++){
+    const low = i===0 ? 20 : (freqs[i-1]+freqs[i])/2;
+    const high = i===freqs.length-1 ? 20000 : (freqs[i]+freqs[i+1])/2;
 
-    for (let i = 0; i < freqs.length; i++) {
-      const low = i === 0 ? 20 : (freqs[i - 1] + freqs[i]) / 2;
-      const high = i === freqs.length - 1 ? 20000 : (freqs[i] + freqs[i + 1]) / 2;
-      this.frequencyBands[`b${i + 1}`] = {
-        low,
-        high,
-        color: `hsla(${i * 12},100%,50%,0.5)`,
-        name: formatFreqLabel(freqs[i])
-      };
+    let label, unit;
+    if (freqs[i] >= 1000) {
+      label = (freqs[i] / 1000).toFixed(1).replace(/\.0$/, ""); // valeur en k
+      unit = "kHz";
+    } else {
+      label = freqs[i]; 
+      unit = "Hz";
     }
+
+    this.frequencyBands[`b${i+1}`] = {
+      low,
+      high,
+      color: `hsla(${i*12},100%,50%,0.5)`,
+      name: `${label}\n${unit}`   // ✅ unité à la ligne
+    };
   }
+}
+
 
   this.currentBand = null;
   this.play();
@@ -381,10 +391,37 @@ play(filteredBand=null) {
         }
 
         // nom de la bande
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${band.name}`, (x1 + x2) / 2, 20);
+        // --- affichage du label (nom éventuellement multi-ligne) ---
+ctx.fillStyle = '#fff';
+ctx.font = '12px Arial';
+ctx.textAlign = 'center';
+
+// s'assurer que name est une chaîne
+const rawName = String(band.name || '');
+const lines = rawName.split('\n'); // si pas de '\n', lines.length === 1
+const lineHeight = 14; // espacement entre lignes (ajuste si besoin)
+
+if (lines.length === 1) {
+  // comportement habituel : texte sur une seule ligne, placé vers le haut
+  // on garde la même position qu'avant pour compatibilité visuelle
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(lines[0], (x1 + x2) / 2, 20);
+} else {
+  // plusieurs lignes : on aligne verticalement (ligne 0 au dessus)
+  // on utilise textBaseline 'top' pour un positionnement simple
+  ctx.textBaseline = 'top';
+  const startY = 12; // position Y de la première ligne (ajuste si besoin)
+  for (let li = 0; li < lines.length; li++) {
+    ctx.fillText(lines[li], (x1 + x2) / 2, startY + li * lineHeight);
+  }
+}
+
+// --- valeurs low-high (uniquement pour 7 et 10 bandes) ---
+if (this.modeSelect.value === '7' || this.modeSelect.value === '10') {
+  // remettre baseline dans le mode souhaité pour garder la même apparence
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`${Math.round(band.low)}-${Math.round(band.high)} Hz`, (x1 + x2) / 2, 35);
+}
 
         // valeurs low-high uniquement pour 7 et 10 bandes
         if (this.modeSelect.value === '7' || this.modeSelect.value === '10') {
