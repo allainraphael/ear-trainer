@@ -77,7 +77,7 @@ function formatFreqLabel(freq) {
   return freq + " Hz";
 }
 
-  class AudioApp {
+class AudioApp {
   constructor() {
     // DOM
     this.fileInput = document.getElementById("fileInput");
@@ -135,7 +135,7 @@ function formatFreqLabel(freq) {
     this.updateBands();
   }
 
-    bindEvents(){
+  bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
     this.noiseSelect.addEventListener("change", ()=>this.selectNoise());
     this.playBtn.addEventListener("click", ()=>this.togglePlay());
@@ -152,77 +152,61 @@ function formatFreqLabel(freq) {
   resizeCanvas(){ this.canvas.width = this.canvas.offsetWidth; this.canvas.height = this.canvas.offsetHeight; }
 
   updateBands() {
-  const mode = this.modeSelect.value;
-
-  if (mode === '7') {
-    this.frequencyBands = {
-      sub:      { low: 20, high: 60, color: 'rgba(255,0,0,0.5)', name: 'Sub' },
-      bass:     { low: 60, high: 250, color: 'rgba(255,165,0,0.5)', name: 'Bass' },
-      lowmid:   { low: 250, high: 500, color: 'rgba(255,255,0,0.5)', name: 'Low Mid' },
-      mid:      { low: 500, high: 2000, color: 'rgba(0,255,0,0.5)', name: 'Mid' },
-      highmid:  { low: 2000, high: 4000, color: 'rgba(0,255,255,0.5)', name: 'High Mid' },
-      presence: { low: 4000, high: 6000, color: 'rgba(0,0,255,0.5)', name: 'Mid Treble' },
-      brilliance: { low: 6000, high: 20000, color: 'rgba(255,0,255,0.5)', name: 'High Treble' }
-    };
-  } 
-  else if (mode === '10') {
-    this.frequencyBands = {
-      b1: { low: 20, high: 65, color: 'rgba(255,0,0,0.5)', name: 'Oct1' },
-      b2: { low: 65, high: 131, color: 'rgba(255,165,0,0.5)', name: 'Oct2' },
-      b3: { low: 131, high: 262, color: 'rgba(255,255,0,0.5)', name: 'Oct3' },
-      b4: { low: 262, high: 523, color: 'rgba(0,255,0,0.5)', name: 'Oct4' },
-      b5: { low: 523, high: 1046, color: 'rgba(0,255,255,0.5)', name: 'Oct5' },
-      b6: { low: 1046, high: 2093, color: 'rgba(0,0,255,0.5)', name: 'Oct6' },
-      b7: { low: 2093, high: 4186, color: 'rgba(255,0,255,0.5)', name: 'Oct7' },
-      b8: { low: 4186, high: 8372, color: 'rgba(255,128,128,0.5)', name: 'Oct8' },
-      b9: { low: 8372, high: 16744, color: 'rgba(128,255,128,0.5)', name: 'Oct9' },
-      b10: { low: 16744, high: 20000, color: 'rgba(128,128,255,0.5)', name: 'Oct10' }
-    };
-  } 
-  else if (mode === '15') {
-    const freqs = [25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000];
-    this.frequencyBands = {};
-
-    for (let i = 0; i < freqs.length; i++) {
-      const low = i === 0 ? 20 : (freqs[i - 1] + freqs[i]) / 2;
-      const high = i === freqs.length - 1 ? 20000 : (freqs[i] + freqs[i + 1]) / 2;
-      this.frequencyBands[`b${i + 1}`] = {
-        low,
-        high,
-        color: `hsla(${i * 24},100%,50%,0.5)`,
-        name: formatFreqLabel(freqs[i])
+    const mode = this.modeSelect.value;
+    if (mode === '7') {
+      this.frequencyBands = {
+        sub:      { low: 20, high: 60, color: 'rgba(255,0,0,0.5)', name: 'Sub' },
+        bass:     { low: 60, high: 250, color: 'rgba(255,165,0,0.5)', name: 'Bass' },
+        lowmid:   { low: 250, high: 500, color: 'rgba(255,255,0,0.5)', name: 'Low Mid' },
+        mid:      { low: 500, high: 2000, color: 'rgba(0,255,0,0.5)', name: 'Mid' },
+        highmid:  { low: 2000, high: 4000, color: 'rgba(0,255,255,0.5)', name: 'High Mid' },
+        presence: { low: 4000, high: 6000, color: 'rgba(0,0,255,0.5)', name: 'Mid Treble' },
+        brilliance: { low: 6000, high: 20000, color: 'rgba(255,0,255,0.5)', name: 'High Treble' }
       };
+    } 
+    else if (mode === '10') {
+      this.frequencyBands = {
+        b1: { low: 20, high: 65, color: 'rgba(255,0,0,0.5)', name: 'Oct1' },
+        b2: { low: 65, high: 131, color: 'rgba(255,165,0,0.5)', name: 'Oct2' },
+        b3: { low: 131, high: 262, color: 'rgba(255,255,0,0.5)', name: 'Oct3' },
+        b4: { low: 262, high: 523, color: 'rgba(0,255,0,0.5)', name: 'Oct4' },
+        b5: { low: 523, high: 1046, color: 'rgba(0,255,255,0.5)', name: 'Oct5' },
+        b6: { low: 1046, high: 2093, color: 'rgba(0,0,255,0.5)', name: 'Oct6' },
+        b7: { low: 2093, high: 4186, color: 'rgba(255,0,255,0.5)', name: 'Oct7' },
+        b8: { low: 4186, high: 8372, color: 'rgba(255,128,128,0.5)', name: 'Oct8' },
+        b9: { low: 8372, high: 16744, color: 'rgba(128,255,128,0.5)', name: 'Oct9' },
+        b10: { low: 16744, high: 20000, color: 'rgba(128,128,255,0.5)', name: 'Oct10' }
+      };
+    } 
+    else if (mode === '15') {
+      const freqs = [25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000];
+      this.frequencyBands = {};
+      for (let i = 0; i < freqs.length; i++) {
+        const low = i === 0 ? 20 : (freqs[i - 1] + freqs[i]) / 2;
+        const high = i === freqs.length - 1 ? 20000 : (freqs[i] + freqs[i + 1]) / 2;
+        this.frequencyBands[`b${i + 1}`] = {
+          low,
+          high,
+          color: `hsla(${i * 24},100%,50%,0.5)`,
+          name: formatFreqLabel(freqs[i])
+        };
+      }
+    } 
+    else if(mode==='31'){
+      const freqs=[20, 25, 32, 40, 50, 63, 80, 100, 125, 160,200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
+      this.frequencyBands = {};
+      for(let i=0;i<freqs.length;i++){
+        const low = i===0 ? 20 : (freqs[i-1]+freqs[i])/2;
+        const high = i===freqs.length-1 ? 20000 : (freqs[i]+freqs[i+1])/2;
+        let label, unit;
+        if (freqs[i] >= 1000) { label = (freqs[i] / 1000).toFixed(1).replace(/\.0$/, ""); unit = "kHz"; } 
+        else { label = freqs[i]; unit = "Hz"; }
+        this.frequencyBands[`b${i+1}`] = { low, high, color: `hsla(${i*12},100%,50%,0.5)`, name: `${label}\n${unit}` };
+      }
     }
-  } 
-  else if(mode==='31'){
-  const freqs=[20, 25, 32, 40, 50, 63, 80, 100, 125, 160,200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
-  this.frequencyBands = {};
-  for(let i=0;i<freqs.length;i++){
-    const low = i===0 ? 20 : (freqs[i-1]+freqs[i])/2;
-    const high = i===freqs.length-1 ? 20000 : (freqs[i]+freqs[i+1])/2;
-
-    let label, unit;
-    if (freqs[i] >= 1000) {
-      label = (freqs[i] / 1000).toFixed(1).replace(/\.0$/, ""); // valeur en k
-      unit = "kHz";
-    } else {
-      label = freqs[i]; 
-      unit = "Hz";
-    }
-
-    this.frequencyBands[`b${i+1}`] = {
-      low,
-      high,
-      color: `hsla(${i*12},100%,50%,0.5)`,
-      name: `${label}\n${unit}`   // ✅ unité à la ligne
-    };
+    this.currentBand = null;
+    this.play();
   }
-}
-
-
-  this.currentBand = null;
-  this.play();
-}
 
   async loadFile(e){
     const file = e.target.files[0];
@@ -230,7 +214,6 @@ function formatFreqLabel(freq) {
     if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const arrayBuffer = await file.arrayBuffer();
     this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
-
     if(!this.gainNode){
       this.gainNode = this.audioContext.createGain();
       this.analyser = this.audioContext.createAnalyser();
@@ -240,23 +223,20 @@ function formatFreqLabel(freq) {
       this.analyser.connect(this.audioContext.destination);
       this.setVolume(this.volumeSlider.value);
     }
-
     this.pauseTime = 0;
     this.play();
   }
 
   selectNoise(){
-  // crée ou initialise la chaîne audio (gainNode + analyser) si nécessaire
-  if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  this.initAudio(); // <-- IMPORTANT
-
-  const val = this.noiseSelect.value;
-  if(val === "white") this.buffer = this.generateWhiteNoise(10);
-  else if(val === "pink") this.buffer = this.generatePinkNoise(10);
-  else this.buffer = null;
-  this.pauseTime = 0;
-  this.play();
-}
+    if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    this.initAudio();
+    const val = this.noiseSelect.value;
+    if(val === "white") this.buffer = this.generateWhiteNoise(10);
+    else if(val === "pink") this.buffer = this.generatePinkNoise(10);
+    else this.buffer = null;
+    this.pauseTime = 0;
+    this.play();
+  }
 
   generateWhiteNoise(duration=5){
     const sampleRate = this.audioContext.sampleRate;
@@ -286,63 +266,46 @@ function formatFreqLabel(freq) {
     return buffer;
   }
 
-  // ===== INITIALISATION AUDIO =====
-initAudio() {
+  initAudio() {
     if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     if(!this.gainNode) {
-        this.gainNode = this.audioContext.createGain();
-        this.analyser = this.audioContext.createAnalyser();
-        this.analyser.fftSize = 2048;
-        this.floatData = new Float32Array(this.analyser.frequencyBinCount);
-
-        // Chaîne : gain → analyser → destination
-        this.gainNode.connect(this.analyser);
-        this.analyser.connect(this.audioContext.destination);
-
-        this.setVolume(this.volumeSlider.value);
+      this.gainNode = this.audioContext.createGain();
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.floatData = new Float32Array(this.analyser.frequencyBinCount);
+      this.gainNode.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
+      this.setVolume(this.volumeSlider.value);
     }
-}
+  }
 
-// ===== PLAY =====
-play(filteredBand=null) {
+  play(filteredBand=null) {
     if(!this.buffer) return;
     if(this.audioContext.state === "suspended") this.audioContext.resume();
-
-    // Stop si source déjà existante
-    if(this.source){ 
-        try{ this.source.stop(); } catch(e) {}
-        this.source.disconnect();
-    }
-
+    if(this.source){ try{ this.source.stop(); } catch(e) {} this.source.disconnect(); }
     this.source = this.audioContext.createBufferSource();
     this.source.buffer = this.buffer;
     this.source.loop = this.isLooping;
-
-    // Déconnecter ancien filtre
     if(this.filterNode){ this.filterNode.disconnect(); this.filterNode = null; }
 
     const bandKey = filteredBand || this.currentBand;
     if(bandKey){
-        const band = this.frequencyBands[bandKey];
-        const filter = this.audioContext.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.value = Math.sqrt(band.low * band.high);
-        filter.Q.value = filter.frequency.value / (band.high - band.low);
-
-        // Toujours passer par gainNode → analyser
-        this.source.connect(filter);
-        filter.connect(this.gainNode);
-        this.filterNode = filter;
-    } else {
-        this.source.connect(this.gainNode);
-    }
+      const band = this.frequencyBands[bandKey];
+      const filter = this.audioContext.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = Math.sqrt(band.low * band.high);
+      filter.Q.value = filter.frequency.value / (band.high - band.low);
+      this.source.connect(filter);
+      filter.connect(this.gainNode);
+      this.filterNode = filter;
+    } else { this.source.connect(this.gainNode); }
 
     this.startTime = this.audioContext.currentTime - this.pauseTime;
     this.source.start(0, this.pauseTime);
     this.isPlaying = true;
 
     if(!this.animationId) this.animate();
-}
+  }
 
   togglePlay(){
     if(!this.isPlaying){ this.play(); }
@@ -371,226 +334,140 @@ play(filteredBand=null) {
 
   drawSpectrum() {
     const ctx = this.ctx, width = this.canvas.width, height = this.canvas.height;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
+    ctx.clearRect(0,0,width,height);
 
-    // --- affichage des bandes ---
-    for (const key in this.frequencyBands) {
-        const band = this.frequencyBands[key];
-        const x1 = this.frequencyToX(band.low, width);
-        const x2 = this.frequencyToX(band.high, width);
+    // --- bandes ---
+    for(const key in this.frequencyBands){
+      const band=this.frequencyBands[key];
+      const x1=this.frequencyToX(band.low,width);
+      const x2=this.frequencyToX(band.high,width);
+      ctx.fillStyle=band.color;
+      ctx.fillRect(x1,0,x2-x1,height);
 
-        // couleur bande principale
-        ctx.fillStyle = (this.currentBand === key) ? band.color : band.color.replace("0.5", "0.2");
-        ctx.fillRect(x1, 0, x2 - x1, height);
+      if(this.highlightBand===key){
+        ctx.fillStyle=`rgba(255,255,255,${this.highlightBandOpacity})`;
+        ctx.fillRect(x1,0,x2-x1,height);
+      }
 
-        // clignotement
-        if (this.highlightBand === key) {
-            ctx.fillStyle = `rgba(255,255,255,${this.highlightBandOpacity})`;
-            ctx.fillRect(x1, 0, x2 - x1, height);
-        }
-
-        // nom de la bande
-        // --- affichage du label (nom éventuellement multi-ligne) ---
-ctx.fillStyle = '#fff';
-ctx.font = '12px Arial';
-ctx.textAlign = 'center';
-
-// s'assurer que name est une chaîne
-const rawName = String(band.name || '');
-const lines = rawName.split('\n'); // si pas de '\n', lines.length === 1
-const lineHeight = 14; // espacement entre lignes (ajuste si besoin)
-
-if (lines.length === 1) {
-  // comportement habituel : texte sur une seule ligne, placé vers le haut
-  // on garde la même position qu'avant pour compatibilité visuelle
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(lines[0], (x1 + x2) / 2, 20);
-} else {
-  // plusieurs lignes : on aligne verticalement (ligne 0 au dessus)
-  // on utilise textBaseline 'top' pour un positionnement simple
-  ctx.textBaseline = 'top';
-  const startY = 12; // position Y de la première ligne (ajuste si besoin)
-  for (let li = 0; li < lines.length; li++) {
-    ctx.fillText(lines[li], (x1 + x2) / 2, startY + li * lineHeight);
-  }
-}
-
-// --- valeurs low-high (uniquement pour 7 et 10 bandes) ---
-if (this.modeSelect.value === '7' || this.modeSelect.value === '10') {
-  // remettre baseline dans le mode souhaité pour garder la même apparence
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(`${Math.round(band.low)}-${Math.round(band.high)} Hz`, (x1 + x2) / 2, 35);
-}
-
-       
+      ctx.fillStyle="#fff";
+      ctx.font="10px Arial";
+      ctx.textAlign="center";
+      ctx.fillText(band.name,(x1+x2)/2,height/2);
+    }
 
     // --- repères dB ---
-    [20, 0, -20, -40, -60, -80, -100].forEach(db => {
-        ctx.fillStyle = "#aaa";
-        ctx.font = "10px Arial";
-        ctx.textAlign = "right";
-        ctx.fillText(db + " dB", width - 2, this.dbToY(db, height) - 2);
+    [20,0,-20,-40,-60,-80,-100].forEach(db=>{
+      ctx.fillStyle="#aaa";
+      ctx.font="10px Arial";
+      ctx.textAlign="right";
+      ctx.fillText(db+" dB",width-2,this.dbToY(db,height)-2);
     });
 
-    // --- repères Hz (toujours visibles) ---
-    [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].forEach(freq => {
-        ctx.fillStyle = "#aaa";
-        ctx.font = "10px Arial";
-        ctx.textAlign = "left";
-        ctx.fillText((freq >= 1000 ? (freq / 1000) + "k" : freq) + "Hz", this.frequencyToX(freq, width) + 2, height - 5);
+    // --- repères Hz ---
+    [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(freq=>{
+      ctx.fillStyle="#aaa";
+      ctx.font="10px Arial";
+      ctx.textAlign="left";
+      ctx.fillText(freq>=1000?(freq/1000)+"k":freq+"",this.frequencyToX(freq,width)+2,height-5);
     });
 
-    // --- spectre audio (si pas en mode question) ---
-    if (!this.modeQuestion && this.analyser) {
-        this.analyser.getFloatFrequencyData(this.floatData);
-        ctx.beginPath();
-        ctx.strokeStyle = '#4facfe';
-        ctx.lineWidth = 2;
-        for (let i = 0; i < this.floatData.length; i++) {
-            const freq = (i * this.audioContext.sampleRate / 2) / this.floatData.length;
-            if (freq < 20 || freq > 20000) continue;
-            const x = this.frequencyToX(freq, width);
-            const y = this.dbToY(this.floatData[i], height);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
+    // --- spectre audio ---
+    if(!this.modeQuestion && this.analyser){
+      this.analyser.getFloatFrequencyData(this.floatData);
+      ctx.beginPath();
+      ctx.strokeStyle="#4facfe";
+      ctx.lineWidth=2;
+      for(let i=0;i<this.floatData.length;i++){
+        const freq=(i*this.audioContext.sampleRate/2)/this.floatData.length;
+        if(freq<20 || freq>20000) continue;
+        const x=this.frequencyToX(freq,width);
+        const y=this.dbToY(this.floatData[i],height);
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
     }
 
     // --- mode quiz ---
-    if (this.modeQuestion) {
-        ctx.fillStyle = "rgba(255,255,255,0.8)";
-        ctx.font = "80px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("?", width / 2, height / 2);
+    if(this.modeQuestion){
+      ctx.fillStyle="rgba(255,255,255,0.8)";
+      ctx.font="80px Arial";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText("?",width/2,height/2);
     }
-}
+  }
 
-  animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
+  animate(){
+    this.drawSpectrum();
+    this.animationId=requestAnimationFrame(()=>this.animate());
+  }
 
   handleCanvasClick(e){
-    const rect=this.canvas.getBoundingClientRect(), x=e.clientX-rect.left, width=this.canvas.width;
+    if(!this.quizActive) return;
+    const rect=this.canvas.getBoundingClientRect();
+    const x=e.clientX-rect.left;
     for(const key in this.frequencyBands){
-      const band=this.frequencyBands[key], x1=this.frequencyToX(band.low,width), x2=this.frequencyToX(band.high,width);
+      const band=this.frequencyBands[key];
+      const x1=this.frequencyToX(band.low,this.canvas.width);
+      const x2=this.frequencyToX(band.high,this.canvas.width);
       if(x>=x1 && x<=x2){
-        if(this.quizActive){
-          this.checkQuizAnswer(key);
-        } else {
-          this.currentBand=key;
-          this.play(key);
-        }
+        this.checkQuizAnswer(key);
         break;
       }
     }
   }
 
-  // ===== QUIZ =====
   startQuizSeries(){
-    if(!this.buffer) { alert("Charge un son avant !"); return; }
-    this.quizScore=0;
+    this.quizActive=true;
     this.quizCount=0;
+    this.quizScore=0;
     this.resultsBody.innerHTML="";
     this.resultsTable.style.display="table";
     this.progressContainer.style.display="block";
-    this.quizActive=true;
-    this.quizMessage.textContent="Quiz en cours...";
-    this.nextQuiz();
+    this.progressBar.style.width="0%";
+    this.nextQuizQuestion();
   }
 
-  nextQuiz(){
+  nextQuizQuestion(){
+    if(this.quizCount>=this.totalQuestions){
+      this.endQuiz();
+      return;
+    }
     const keys=Object.keys(this.frequencyBands);
     this.quizBand=keys[Math.floor(Math.random()*keys.length)];
+    this.highlightBand=this.quizBand;
     this.currentBand=null;
     this.modeQuestion=true;
     this.play(this.quizBand);
+    this.quizMessage.textContent="Quelle bande entends-tu ?";
+  }
+
+  checkQuizAnswer(selected){
+    const correct = selected===this.quizBand;
+    this.quizScore+=correct?1:0;
+    const row = document.createElement("tr");
+    row.innerHTML=`<td>${this.quizCount+1}</td><td>${selected}</td><td>${this.quizBand}</td><td class="${correct?'correct':'incorrect'}">${correct?'✔':'✖'}</td>`;
+    this.resultsBody.appendChild(row);
     this.quizCount++;
-    this.progressBar.style.width=((this.quizCount-1)/this.totalQuestions*100)+"%";
+    this.progressBar.style.width=((this.quizCount/this.totalQuestions)*100)+"%";
+    this.nextQuizQuestion();
   }
-
-  checkQuizAnswer(selectedKey){
-  const correct = selectedKey === this.quizBand;
-  this.currentBand = this.quizBand; // bande toujours allumée en dessous
-  this.modeQuestion = false;
-
-  if(correct){ 
-    this.quizScore++; 
-    this.quizMessage.textContent = "✅ Correct !"; 
-  } else { 
-    this.quizMessage.textContent = `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; 
-  }
-
-  // ajouter ligne tableau
-  const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
-  this.resultsBody.appendChild(tr);
-
-  // --- CLIGNOTEMENT rapide ---
-  if(this.clignotementInterval) clearInterval(this.clignotementInterval);
-
-  const totalTime = 1500; // ms
-  const blinks = 6; // nombre de clignotements complets
-  const halfCycle = totalTime / (blinks * 2); // durée d'un demi-clignotement
-  let visible = false;
-
-  this.highlightBand = this.quizBand;
-  this.highlightBandOpacity = 0.8;
-
-  this.clignotementInterval = setInterval(()=>{
-    visible = !visible;
-    this.highlightBandOpacity = visible ? 0.8 : 0.2;
-  }, halfCycle);
-
-  // fin du clignotement
-  setTimeout(()=>{
-    clearInterval(this.clignotementInterval);
-    this.highlightBandOpacity = 0.8; // laisse la bande allumée
-    if(this.quizCount < this.totalQuestions) {
-      this.nextQuiz();
-    } else {
-      // arrêter le son après la 10e question
-      if(this.source) {
-        try { this.source.stop(); } catch(e){}
-        this.isPlaying = false;
-      }
-      this.endQuiz();
-    }
-  }, totalTime);
-}
 
   endQuiz(){
-    this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
-    this.progressBar.style.width="100%";
-    this.replayBtn.style.display="inline-block";
-    this.newQuizBtn.style.display="inline-block";
-    this.quitQuizBtn.style.display="inline-block";
+    this.quizMessage.textContent=`Quiz terminé! Score: ${this.quizScore}/${this.totalQuestions}`;
     this.quizActive=false;
-
-    // --- NOUVEAU : éteindre la bande et stopper le son ---
-    this.highlightBand = null;
-    this.currentBand = null;
-    if(this.source){
-        try { this.source.stop(); } catch(e){}
-        this.isPlaying = false;
-        this.animationId && cancelAnimationFrame(this.animationId);
-        this.animationId = null;
-    }
-}
+    this.modeQuestion=false;
+    this.highlightBand=null;
+  }
 
   quitQuiz(){
     this.quizActive=false;
     this.modeQuestion=false;
-    this.modeReponse=false;
     this.highlightBand=null;
-    this.quizMessage.textContent="";
-    this.progressContainer.style.display="none";
-    this.replayBtn.style.display="none";
-    this.newQuizBtn.style.display="none";
-    this.quitQuizBtn.style.display="none";
     this.resultsTable.style.display="none";
-    this.currentBand=null;
-    if(this.isPlaying) this.play();
+    this.progressContainer.style.display="none";
+    this.quizMessage.textContent="";
   }
 }
 
