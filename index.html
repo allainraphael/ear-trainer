@@ -298,14 +298,49 @@ class AudioApp {
     }
   }
   
-  stopSource(sourceName) {
-    if (this[sourceName]) {
+  updatePlayButton(isPlaying){
+    if(isPlaying){
+        this.playBtn.classList.add("active");
+        this.playBtn.textContent = "⏸️";  // pause
+    } else {
+        this.playBtn.classList.remove("active");
+        this.playBtn.textContent = "▶️";  // play
+    }
+}
+
+  stopSource(type){
+    if(this[type]){
         try { 
-            this[sourceName].stop(); 
-        } catch(e) {}
-        this[sourceName].disconnect();
-        this[sourceName].onended = null;
-        this[sourceName] = null;
+            this[type].stop(); 
+        } catch(e){}
+        this[type] = null;
+    }
+
+    // Si on stoppe la source principale
+    if(type === "mainSource"){
+        this.isPlaying = false;
+
+        // Stopper l’animation si active
+        if(this.animationId){
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+
+        // PATCH : réinitialiser la pauseTime pour repartir du début
+        this.pauseTime = 0;
+
+        // Réinitialiser le bouton Play
+        this.playBtn.classList.remove("active");
+        this.playBtn.textContent = "▶️";
+    }
+
+    // Si on stoppe la source du quiz
+    if(type === "quizSource"){
+        // pas besoin de pauseTime ici
+        if(this.animationId){
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
     }
 }
   
@@ -432,18 +467,26 @@ class AudioApp {
 }
 
   togglePlay(){
-    if(this.isPlaying) {
-        this.stopSource('mainSource');        // stop proprement et déconnecte
+    if(this.isPlaying){
+        // --- stop la source principale ---
+        this.stopSource("mainSource");
+
+        // garde en mémoire la position de pause
         this.pauseTime = this.audioContext.currentTime - this.startTime;
+
         this.isPlaying = false;
         if(this.animationId){
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
-        this.playBtn.classList.remove("active");
+
+        // bouton visuel OFF
+        this.updatePlayButton(false);
     } else {
-        this.play();                           // reprend la lecture depuis pauseTime
-        this.playBtn.classList.add("active");
+        // relance la lecture normale
+        this.play();
+
+        this.updatePlayButton(true);
     }
 }
 
@@ -715,16 +758,16 @@ cleanupSources(){
     this.cleanupSources();
 
     // Réinitialiser l’état du play
-    this.isPlaying = false;
-    this.playBtn.classList.remove("active");
-    this.playBtn.textContent = "▶️";
     this.highlightBand = null;
     this.currentBand = null;
-    this.animationId && cancelAnimationFrame(this.animationId);
-    this.animationId = null;
-    this.playBtn.classList.remove("active");  // retire le vert
-    this.playBtn.textContent = "▶️";          // remet l’icône play
-        
+    if(this.animationId){
+        cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+    }
+
+    // --- Réinitialiser le bouton Play ---
+    this.isPlaying = false;
+    this.updatePlayButton(false);   
     }
 
   quitQuiz(){
@@ -760,8 +803,7 @@ cleanupSources(){
 
     // --- Réinitialiser le bouton Play ---
     this.isPlaying = false;
-    this.playBtn.classList.remove("active");
-    this.playBtn.textContent = "▶️";
+    this.updatePlayButton(false);
 }
 
 
