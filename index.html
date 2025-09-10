@@ -144,6 +144,9 @@ class AudioApp {
     this.volumeSlider = document.getElementById("volume");
     this.canvas = document.getElementById("analyser");
     this.ctx = this.canvas.getContext("2d");
+    this.resizeCanvas();
+    window.addEventListener("resize", ()=>this.resizeCanvas());
+    this.canvas.addEventListener("click",(e)=>this.handleCanvasClick(e));
     this.quizMessage = document.getElementById("quizMessage");
     this.resultsTable = document.getElementById("resultsTable");
     this.resultsBody = this.resultsTable.querySelector("tbody");
@@ -184,9 +187,7 @@ class AudioApp {
     this.frequencyBands = {};
 
     this.bindEvents();
-    this.resizeCanvas();
-    window.addEventListener("resize", ()=>this.resizeCanvas());
-    this.canvas.addEventListener("click",(e)=>this.handleCanvasClick(e));
+    
     this.animationId = null;
 
     this.updateBands();
@@ -274,14 +275,27 @@ class AudioApp {
     if(!file) return;
     if(!this.audioContext) this.audioContext=new (window.AudioContext||window.webkitAudioContext)();
     const arrayBuffer=await file.arrayBuffer();
+    this.initAudio();
     this.buffer=await this.audioContext.decodeAudioData(arrayBuffer);
     this.loadedBuffer=this.buffer;
-    this.initAudio();
     this.pauseTime=0;
     this.play();
     this.playBtn.classList.add("active"); // bouton Play devient vert
   }
 
+  initAudio(){
+    if(!this.audioContext) this.audioContext=new (window.AudioContext||window.webkitAudioContext)();
+    if(!this.gainNode){
+      this.gainNode=this.audioContext.createGain();
+      this.analyser=this.audioContext.createAnalyser();
+      this.analyser.fftSize=2048;
+      this.floatData=new Float32Array(this.analyser.frequencyBinCount);
+      this.gainNode.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
+      this.setVolume(this.volumeSlider.value);
+    }
+  }
+  
   toggleNoise(type){
     this.initAudio();
 
@@ -360,44 +374,29 @@ class AudioApp {
     return buffer;
   }
 
-  initAudio(){
-    if(!this.audioContext) this.audioContext=new (window.AudioContext||window.webkitAudioContext)();
-    if(!this.gainNode){
-      this.gainNode=this.audioContext.createGain();
-      this.analyser=this.audioContext.createAnalyser();
-      this.analyser.fftSize=2048;
-      this.floatData=new Float32Array(this.analyser.frequencyBinCount);
-      this.gainNode.connect(this.analyser);
-      this.analyser.connect(this.audioContext.destination);
-      this.setVolume(this.volumeSlider.value);
-    }
-  }
-
-  play(filteredBand=null, isQuiz=false){
+  play(filteredBand = null, isQuiz = false){
     if(!this.buffer) return;
-    if(this.audioContext.state==="suspended") this.audioContext.resume();
+    if(this.audioContext.state === "suspended") this.audioContext.resume();
 
     // STOP des sources existantes
     if(isQuiz){
         if(this.quizSource){ try{ this.quizSource.stop(); } catch(e){} }
         this.quizSource = null;
-        if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
-        this.isPlaying = false;
-        this.animationId && cancelAnimationFrame(this.animationId);
-        this.animationId = null;
     } else {
         if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
         this.mainSource = null;
+        this.isPlaying = false;
+        if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
     }
 
     const source = this.audioContext.createBufferSource();
-    source.buffer=this.buffer;
-    source.loop=this.isLooping;
+    source.buffer = this.buffer;
+    source.loop = this.isLooping;
 
     if(filteredBand){
         const band = this.frequencyBands[filteredBand];
         const filter = this.audioContext.createBiquadFilter();
-        filter.type="bandpass";
+        filter.type = "bandpass";
         filter.frequency.value = Math.sqrt(band.low * band.high);
         filter.Q.value = filter.frequency.value / (band.high - band.low);
         source.connect(filter);
@@ -463,6 +462,7 @@ class AudioApp {
     this.canvas.height = this.height * dpr;
     this.ctx.setTransform(1,0,0,1,0,0); // reset transform
     this.ctx.scale(dpr, dpr);
+    this.drawSpectrum(); // 🔹 redessiner immédiatement
 }
 
 drawSpectrum() {
