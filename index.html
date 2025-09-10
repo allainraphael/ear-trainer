@@ -106,6 +106,7 @@ function formatFreqLabel(freq) {
     this.gainNode = null;
     this.filterNode = null;
     this.buffer = null;
+    this.loadedBuffer = null;
     this.isPlaying = false;
     this.isLooping = true;
     this.startTime = 0;
@@ -220,6 +221,8 @@ function formatFreqLabel(freq) {
     if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const arrayBuffer = await file.arrayBuffer();
     this.buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+    // Sauvegarde permanente de la piste chargée
+    this.loadedBuffer = this.buffer;
 
     if(!this.gainNode){
       this.gainNode = this.audioContext.createGain();
@@ -238,12 +241,28 @@ function formatFreqLabel(freq) {
   selectNoise(){
   // crée ou initialise la chaîne audio (gainNode + analyser) si nécessaire
   if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  this.initAudio(); // <-- IMPORTANT
+  this.initAudio();
 
   const val = this.noiseSelect.value;
-  if(val === "white") this.buffer = this.generateWhiteNoise(10);
-  else if(val === "pink") this.buffer = this.generatePinkNoise(10);
-  else this.buffer = null;
+  if(val === "white") {
+    this.buffer = this.generateWhiteNoise(10);
+  } else if(val === "pink") {
+    this.buffer = this.generatePinkNoise(10);
+  } else {
+    // Restaurer la piste chargée si elle existe, sinon ne rien jouer
+    if(this.loadedBuffer){
+      this.buffer = this.loadedBuffer;
+    } else {
+      // Pas de fichier chargé — coupe le son et retourne
+      this.buffer = null;
+      if(this.source){
+        try{ this.source.stop(); }catch(e){}
+        this.isPlaying = false;
+      }
+      return;
+    }
+  }
+
   this.pauseTime = 0;
   this.play();
 }
