@@ -308,39 +308,22 @@ class AudioApp {
     }
 }
 
-  stopSource(type){
-    if(this[type]){
-        try { 
-            this[type].stop(); 
-        } catch(e){}
+  // 🔹 Arrêt d'une source
+stopSource(type) {
+    if(this[type]) {
+        try { this[type].stop(); } catch(e){}
+        this[type].disconnect();
         this[type] = null;
     }
 
-    // Si on stoppe la source principale
-    if(type === "mainSource"){
+    if(type === 'mainSource') {
+        this.pauseTime = this.audioContext.currentTime - this.startTime;
         this.isPlaying = false;
-
-        // Stopper l’animation si active
         if(this.animationId){
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
-
-        // PATCH : réinitialiser la pauseTime pour repartir du début
-        this.pauseTime = 0;
-
-        // Réinitialiser le bouton Play
-        this.playBtn.classList.remove("active");
-        this.playBtn.textContent = "▶️";
-    }
-
-    // Si on stoppe la source du quiz
-    if(type === "quizSource"){
-        // pas besoin de pauseTime ici
-        if(this.animationId){
-            cancelAnimationFrame(this.animationId);
-            this.animationId = null;
-        }
+        this.updatePlayButton(false);
     }
 }
 
@@ -372,11 +355,10 @@ class AudioApp {
     return buffer;
   }
 
-  // Méthode centrale pour créer une source audio
+  // 🔹 Création et lecture d'une source audio
 createSource({ buffer, loop = false, filteredBand = null, isQuiz = false }) {
     if (!buffer) return null;
 
-    // Détermine quelle source stopper
     const sourceKey = isQuiz ? 'quizSource' : 'mainSource';
 
     // Stop de l'ancienne source
@@ -386,14 +368,14 @@ createSource({ buffer, loop = false, filteredBand = null, isQuiz = false }) {
         this[sourceKey] = null;
     }
 
-    // Création de la nouvelle source
+    // Nouvelle source
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
     source.loop = loop;
 
     let finalNode = this.gainNode;
 
-    // Si filtre demandé
+    // Filtrage optionnel
     if (filteredBand) {
         const band = this.frequencyBands[filteredBand];
         const filter = this.audioContext.createBiquadFilter();
@@ -401,150 +383,134 @@ createSource({ buffer, loop = false, filteredBand = null, isQuiz = false }) {
         filter.frequency.value = Math.sqrt(band.low * band.high);
         filter.Q.value = filter.frequency.value / (band.high - band.low);
         source.connect(filter);
-        filter.connect(this.gainNode);
-        this.filterNode = filter;
+        filter.connect(finalNode);
+        if(!isQuiz) this.filterNode = filter; // pour mainSource
     } else {
         source.connect(finalNode);
     }
 
-    // Stocke la référence
     this[sourceKey] = source;
 
-    // Start immédiat si c'est le quiz ou si la lecture principale doit reprendre
-    source.start(0, isQuiz ? 0 : this.pauseTime);
+    const offset = isQuiz ? 0 : this.pauseTime;
+    source.start(0, offset);
+
+    if(!isQuiz) {
+        this.isPlaying = true;
+        this.startTime = this.audioContext.currentTime - this.pauseTime;
+        if(!this.animationId) this.animate();
+        this.updatePlayButton(true);
+    }
 
     return source;
 }
   
-  play(filteredBand = null, isQuiz = false) {
+  // 🔹 Lecture principale ou filtrée
+play(filteredBand = null) {
     if (!this.buffer) return;
-    if (this.audioContext.state === "suspended") this.audioContext.resume();
+    if(this.audioContext.state === 'suspended') this.audioContext.resume();
 
-    // Déterminer quelle source utiliser
-    const sourceKey = isQuiz ? "quizSource" : "mainSource";
+    this.createSource({ buffer: this.buffer, loop: this.isLooping, filteredBand, isQuiz: false });
+}
 
-    // Stop de l'ancienne source
-    if (this[sourceKey]) {
-        try { this[sourceKey].stop(); } catch(e){}
-        this[sourceKey].disconnect();
-        this[sourceKey] = null;
+  toggleNoise(type){
+    this.initAudio();
+
+    // Arrêter uniquement mainSource
+    this.stopSource('mainSource');
+    this.pauseTime = 0; 
+
+    if(type === 'white'){
+        const isActive = this.whiteNoiseBtn.classList.contains('active');
+        this.whiteNoiseBtn.classList.toggle('active', !isActive);
+        this.pinkNoiseBtn.classList.remove('active');
+
+        if(!isActive){
+            const buffer = this.generateWhiteNoise(10);
+            this.createSource({buffer, loop: true, isQuiz: false});
+            this.updatePlayButton(true);
+        } else if(this.loadedBuffer){
+            this.createSource({buffer: this.loadedBuffer, loop: this.isLooping});
+            this.updatePlayButton(true);
+        } else {
+            this.updatePlayButton(false);
+        }
     }
 
-    // Création de la nouvelle source
-    const source = this.audioContext.createBufferSource();
-    source.buffer = this.buffer;
-    source.loop = isQuiz ? false : this.isLooping;
+    if(type === 'pink'){
+        const isActive = this.pinkNoiseBtn.classList.contains('active');
+        this.pinkNoiseBtn.classList.toggle('active', !isActive);
+        this.whiteNoiseBtn.classList.remove('active');
 
-    let finalNode = this.gainNode;
-
-    // Filtrage optionnel pour une bande spécifique
-    if (filteredBand) {
-        const band = this.frequencyBands[filteredBand];
-        const filter = this.audioContext.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.value = Math.sqrt(band.low * band.high);
-        filter.Q.value = filter.frequency.value / (band.high - band.low);
-        source.connect(filter);
-        filter.connect(this.gainNode);
-        this.filterNode = filter;
-    } else {
-        source.connect(finalNode);
-    }
-
-    // Stocker la source dans la propriété correspondante
-    this[sourceKey] = source;
-
-    // Démarrer la lecture
-    const offset = isQuiz ? 0 : this.pauseTime;
-    source.start(0, offset);
-
-    // Mise à jour état pour mainSource
-    if (!isQuiz) {
-        this.startTime = this.audioContext.currentTime - this.pauseTime;
-        this.isPlaying = true;
-        if (!this.animationId) this.animate();
+        if(!isActive){
+            const buffer = this.generatePinkNoise(10);
+            this.createSource({buffer, loop: true, isQuiz: false});
+            this.updatePlayButton(true);
+        } else if(this.loadedBuffer){
+            this.createSource({buffer: this.loadedBuffer, loop: this.isLooping});
+            this.updatePlayButton(true);
+        } else {
+            this.updatePlayButton(false);
+        }
     }
 }
 
-  toggleNoise(type) {
-    this.initAudio();
 
-    // Réinitialiser la lecture principale (mainSource) mais pas quizSource
+  // 🔹 Toggle lecture/pauses mainSource
+togglePlay() {
+    if(this.isPlaying) {
+        this.stopSource('mainSource');
+    } else {
+        this.play();
+    }
+}
+
+  // 🔹 Toggle boucle
+toggleLoop() {
+    this.isLooping = !this.isLooping;
+    this.loopBtn.classList.toggle('active', this.isLooping);
+    this.loopBtn.textContent = this.isLooping ? "🔁 Boucle ON" : "🔁 Boucle OFF";
+    if(this.mainSource) this.mainSource.loop = this.isLooping;
+}
+
+  // 🔹 Toggle bruit blanc / rose
+toggleNoise(type) {
+    this.initAudio();
     this.stopSource('mainSource');
     this.pauseTime = 0;
 
-    if (type === "white") {
-        const isActive = this.whiteNoiseBtn.classList.contains("active");
-        this.whiteNoiseBtn.classList.toggle("active", !isActive);
-        this.pinkNoiseBtn.classList.remove("active");
+    if(type === 'white'){
+        const isActive = this.whiteNoiseBtn.classList.contains('active');
+        this.whiteNoiseBtn.classList.toggle('active', !isActive);
+        this.pinkNoiseBtn.classList.remove('active');
 
-        if (!isActive) {
-            this.buffer = this.generateWhiteNoise(10);
-            this.play(); // lecture mainSource
-            this.updatePlayButton(true);
-        } else {
-            this.buffer = this.loadedBuffer;
-            if (this.buffer) {
-                this.play();
-                this.updatePlayButton(true);
-            } else {
-                this.updatePlayButton(false);
-            }
+        if(!isActive){
+            const buffer = this.generateWhiteNoise(10);
+            this.createSource({buffer, loop:true});
+        } else if(this.loadedBuffer) {
+            this.createSource({buffer: this.loadedBuffer, loop:this.isLooping});
         }
     }
 
-    if (type === "pink") {
-        const isActive = this.pinkNoiseBtn.classList.contains("active");
-        this.pinkNoiseBtn.classList.toggle("active", !isActive);
-        this.whiteNoiseBtn.classList.remove("active");
+    if(type === 'pink'){
+        const isActive = this.pinkNoiseBtn.classList.contains('active');
+        this.pinkNoiseBtn.classList.toggle('active', !isActive);
+        this.whiteNoiseBtn.classList.remove('active');
 
-        if (!isActive) {
-            this.buffer = this.generatePinkNoise(10);
-            this.play(); // lecture mainSource
-            this.updatePlayButton(true);
-        } else {
-            this.buffer = this.loadedBuffer;
-            if (this.buffer) {
-                this.play();
-                this.updatePlayButton(true);
-            } else {
-                this.updatePlayButton(false);
-            }
+        if(!isActive){
+            const buffer = this.generatePinkNoise(10);
+            this.createSource({buffer, loop:true});
+        } else if(this.loadedBuffer) {
+            this.createSource({buffer: this.loadedBuffer, loop:this.isLooping});
         }
     }
 }
 
-  togglePlay(){
-    if(this.isPlaying){
-        // --- stop la source principale ---
-        this.stopSource("mainSource");
-
-        // garde en mémoire la position de pause
-        this.pauseTime = this.audioContext.currentTime - this.startTime;
-
-        this.isPlaying = false;
-        if(this.animationId){
-            cancelAnimationFrame(this.animationId);
-            this.animationId = null;
-        }
-
-        // bouton visuel OFF
-        this.updatePlayButton(false);
-    } else {
-        // relance la lecture normale
-        this.play();
-
-        this.updatePlayButton(true);
-    }
+// 🔹 Animation canvas spectre
+animate() {
+    this.animationId = requestAnimationFrame(() => this.animate());
+    this.drawSpectrum(true); // true = dessin même si quizSource actif
 }
-
-  toggleLoop(){
-    this.isLooping=!this.isLooping;
-    this.loopBtn.classList.toggle("active",this.isLooping);
-    this.loopBtn.textContent=this.isLooping?"🔁 Boucle ON":"🔁 Boucle OFF";
-    if(this.mainSource) this.mainSource.loop=this.isLooping;
-  }
-
+  
   setVolume(val){ if(this.gainNode) this.gainNode.gain.value=val; }
 
   resetBand(){
@@ -656,8 +622,6 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
         ctx.fillText("?", width / 2, height / 2);
     }
 }
-
-  animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
 
   handleCanvasClick(e){
     const rect = this.canvas.getBoundingClientRect();
