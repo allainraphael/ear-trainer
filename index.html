@@ -343,55 +343,6 @@ class AudioApp {
         }
     }
 }
-  
-  toggleNoise(type){
-    this.initAudio();
-    this.cleanupSources(); // stoppe mainSource et quizSource
-
-    this.pauseTime = 0;   // repartir depuis le début
-
-    if(type === "white"){
-        const isActive = this.whiteNoiseBtn.classList.contains("active");
-        this.whiteNoiseBtn.classList.toggle("active", !isActive);
-        this.pinkNoiseBtn.classList.remove("active");
-        if(!isActive){
-            this.buffer = this.generateWhiteNoise(10);
-            this.cleanupSources();  // ← ici on stoppe toute source existante
-            this.play();
-            this.playBtn.classList.add("active");
-        } else {
-            this.buffer = this.loadedBuffer;
-            this.cleanupSources();
-            if(this.buffer){
-                this.cleanupSources();  // ← ici on stoppe toute source existante
-                this.play();
-                this.playBtn.classList.add("active");
-            } else {
-                this.playBtn.classList.remove("active");
-            }
-        }
-    }
-
-    if(type === "pink"){
-        const isActive = this.pinkNoiseBtn.classList.contains("active");
-        this.pinkNoiseBtn.classList.toggle("active", !isActive);
-        this.whiteNoiseBtn.classList.remove("active");
-        if(!isActive){
-            this.buffer = this.generatePinkNoise(10);
-            this.play();
-            this.playBtn.classList.add("active");
-        } else {
-            this.buffer = this.loadedBuffer;
-            this.cleanupSources();
-            if(this.buffer){
-                this.play();
-                this.playBtn.classList.add("active");
-            } else {
-                this.playBtn.classList.remove("active");
-            }
-        }
-    }
-}
 
   generateWhiteNoise(duration=5){
     const sr=this.audioContext.sampleRate;
@@ -421,26 +372,73 @@ class AudioApp {
     return buffer;
   }
 
-  play(filteredBand = null, isQuiz = false){
-    if(!this.buffer) return;
-    if(this.audioContext.state === "suspended") this.audioContext.resume();
+  // Méthode centrale pour créer une source audio
+createSource({ buffer, loop = false, filteredBand = null, isQuiz = false }) {
+    if (!buffer) return null;
 
-    // stop des sources existantes
-    if(isQuiz){
-        this.stopSource('quizSource');
-    } else {
-        this.stopSource('mainSource');
-        this.isPlaying = false;
-        if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
+    // Détermine quelle source stopper
+    const sourceKey = isQuiz ? 'quizSource' : 'mainSource';
+
+    // Stop de l'ancienne source
+    if (this[sourceKey]) {
+        try { this[sourceKey].stop(); } catch(e){}
+        this[sourceKey].disconnect();
+        this[sourceKey] = null;
     }
 
-    // nouvelle source
+    // Création de la nouvelle source
+    const source = this.audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.loop = loop;
+
+    let finalNode = this.gainNode;
+
+    // Si filtre demandé
+    if (filteredBand) {
+        const band = this.frequencyBands[filteredBand];
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = Math.sqrt(band.low * band.high);
+        filter.Q.value = filter.frequency.value / (band.high - band.low);
+        source.connect(filter);
+        filter.connect(this.gainNode);
+        this.filterNode = filter;
+    } else {
+        source.connect(finalNode);
+    }
+
+    // Stocke la référence
+    this[sourceKey] = source;
+
+    // Start immédiat si c'est le quiz ou si la lecture principale doit reprendre
+    source.start(0, isQuiz ? 0 : this.pauseTime);
+
+    return source;
+}
+  
+  play(filteredBand = null, isQuiz = false) {
+    if (!this.buffer) return;
+    if (this.audioContext.state === "suspended") this.audioContext.resume();
+
+    // Déterminer quelle source utiliser
+    const sourceKey = isQuiz ? "quizSource" : "mainSource";
+
+    // Stop de l'ancienne source
+    if (this[sourceKey]) {
+        try { this[sourceKey].stop(); } catch(e){}
+        this[sourceKey].disconnect();
+        this[sourceKey] = null;
+    }
+
+    // Création de la nouvelle source
     const source = this.audioContext.createBufferSource();
     source.buffer = this.buffer;
-    source.loop = this.isLooping;
+    source.loop = isQuiz ? false : this.isLooping;
 
-    if(filteredBand){
-        // branche filtrée : source -> filter -> gainNode -> analyser -> destination
+    let finalNode = this.gainNode;
+
+    // Filtrage optionnel pour une bande spécifique
+    if (filteredBand) {
         const band = this.frequencyBands[filteredBand];
         const filter = this.audioContext.createBiquadFilter();
         filter.type = "bandpass";
@@ -450,20 +448,70 @@ class AudioApp {
         filter.connect(this.gainNode);
         this.filterNode = filter;
     } else {
-        // branche complète : source -> gainNode -> analyser -> destination
-        source.connect(this.gainNode);
+        source.connect(finalNode);
     }
 
-    if(isQuiz){
-        this.quizSource = source;
-    } else {
-        this.mainSource = source;
+    // Stocker la source dans la propriété correspondante
+    this[sourceKey] = source;
+
+    // Démarrer la lecture
+    const offset = isQuiz ? 0 : this.pauseTime;
+    source.start(0, offset);
+
+    // Mise à jour état pour mainSource
+    if (!isQuiz) {
         this.startTime = this.audioContext.currentTime - this.pauseTime;
         this.isPlaying = true;
-        if(!this.animationId) this.animate();
+        if (!this.animationId) this.animate();
+    }
+}
+
+  toggleNoise(type) {
+    this.initAudio();
+
+    // Réinitialiser la lecture principale (mainSource) mais pas quizSource
+    this.stopSource('mainSource');
+    this.pauseTime = 0;
+
+    if (type === "white") {
+        const isActive = this.whiteNoiseBtn.classList.contains("active");
+        this.whiteNoiseBtn.classList.toggle("active", !isActive);
+        this.pinkNoiseBtn.classList.remove("active");
+
+        if (!isActive) {
+            this.buffer = this.generateWhiteNoise(10);
+            this.play(); // lecture mainSource
+            this.updatePlayButton(true);
+        } else {
+            this.buffer = this.loadedBuffer;
+            if (this.buffer) {
+                this.play();
+                this.updatePlayButton(true);
+            } else {
+                this.updatePlayButton(false);
+            }
+        }
     }
 
-    source.start(0, this.pauseTime);
+    if (type === "pink") {
+        const isActive = this.pinkNoiseBtn.classList.contains("active");
+        this.pinkNoiseBtn.classList.toggle("active", !isActive);
+        this.whiteNoiseBtn.classList.remove("active");
+
+        if (!isActive) {
+            this.buffer = this.generatePinkNoise(10);
+            this.play(); // lecture mainSource
+            this.updatePlayButton(true);
+        } else {
+            this.buffer = this.loadedBuffer;
+            if (this.buffer) {
+                this.play();
+                this.updatePlayButton(true);
+            } else {
+                this.updatePlayButton(false);
+            }
+        }
+    }
 }
 
   togglePlay(){
