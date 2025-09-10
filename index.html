@@ -670,69 +670,38 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
 }
 
   endQuiz(){
-    this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
-    this.progressBar.style.width = "100%";
-    this.replayBtn.style.display = "inline-block";
-    this.newQuizBtn.style.display = "inline-block";
-    this.quitQuizBtn.style.display = "inline-block";
-    this.quizActive = false;
+    this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
+    this.progressBar.style.width="100%";
+    this.replayBtn.style.display="inline-block";
+    this.newQuizBtn.style.display="inline-block";
+    this.quitQuizBtn.style.display="inline-block";
+    this.quizActive=false;
 
-    // --- Éteindre la bande ---
+    // --- NOUVEAU : éteindre la bande et stopper le son ---
     this.highlightBand = null;
     this.currentBand = null;
-
-    // --- Stopper la source quiz ---
-    if(this.quizSource){
-        try {
-            this.quizSource.stop();
-        } catch(e){}
-        this.quizSource = null;
-    }
-
-    // --- Annuler l’animation ---
-    if(this.animationId){
-        cancelAnimationFrame(this.animationId);
+    if(this.source){
+        try { this.source.stop(); } catch(e){}
+        this.isPlaying = false;
+        this.animationId && cancelAnimationFrame(this.animationId);
         this.animationId = null;
     }
-
-    // --- Réinitialiser le bouton Play ---
-    this.isPlaying = false;
-    this.playBtn.classList.remove("active");
-    this.playBtn.textContent = "▶️";
 }
 
   quitQuiz(){
-    this.quizActive = false;
-    this.quizMessage.textContent = "Quiz quitté.";
-    this.progressBar.style.width = "0%";
-
-    // Masquer les boutons liés au quiz
-    this.replayBtn.style.display = "none";
-    this.newQuizBtn.style.display = "none";
-    this.quitQuizBtn.style.display = "none";
-
-    // --- Éteindre la bande ---
-    this.highlightBand = null;
-    this.currentBand = null;
-
-    // --- Stopper la source quiz ---
-    if(this.quizSource){
-        try {
-            this.quizSource.stop();
-        } catch(e){}
-        this.quizSource = null;
-    }
-
-    // --- Annuler l’animation ---
-    if(this.animationId){
-        cancelAnimationFrame(this.animationId);
-        this.animationId = null;
-    }
-
-    // --- Réinitialiser le bouton Play ---
-    this.isPlaying = false;
-    this.playBtn.classList.remove("active");
-    this.playBtn.textContent = "▶️";
+    this.quizActive=false;
+    this.modeQuestion=false;
+    this.modeReponse=false;
+    this.highlightBand=null;
+    this.quizMessage.textContent="";
+    this.progressContainer.style.display="none";
+    this.replayBtn.style.display="none";
+    this.newQuizBtn.style.display="none";
+    this.quitQuizBtn.style.display="none";
+    this.resultsTable.style.display="none";
+    this.currentBand=null;
+    if(this.isPlaying) this.play();
+  }
 }
 
 const app = new AudioApp();
