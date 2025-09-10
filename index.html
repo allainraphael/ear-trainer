@@ -400,20 +400,32 @@ class AudioApp {
   animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
 
   handleCanvasClick(e){
-    const rect=this.canvas.getBoundingClientRect(), x=e.clientX-rect.left, width=this.canvas.width;
-    for(const key in this.frequencyBands){
-      const band=this.frequencyBands[key], x1=this.frequencyToX(band.low,width), x2=this.frequencyToX(band.high,width);
-      if(x>=x1 && x<=x2){
-        if(this.quizActive){
-          this.checkQuizAnswer(key);
+  const rect = this.canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const width = this.canvas.width;
+
+  for(const key in this.frequencyBands){
+    const band = this.frequencyBands[key];
+    const x1 = this.frequencyToX(band.low, width);
+    const x2 = this.frequencyToX(band.high, width);
+
+    if(x >= x1 && x <= x2){
+      if(this.quizActive){
+        this.checkQuizAnswer(key);
+      } else {
+        if(this.currentBand === key){
+          // clic sur la même bande → reset
+          this.resetBand();
         } else {
-          this.currentBand=key;
+          // clic sur une autre bande → sélectionner la nouvelle
+          this.currentBand = key;
           this.play(key);
         }
-        break;
       }
+      break;
     }
   }
+}
 
   // ===== QUIZ =====
   startQuizSeries(){
