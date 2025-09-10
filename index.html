@@ -541,6 +541,11 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
     this.progressContainer.style.display="block";
     this.quizActive=true;
     this.quizMessage.textContent="Quiz en cours...";
+    // --- AFFICHER LES BOUTONS DÈS LE DÉBUT ---
+    this.replayBtn.style.display = "inline-block";
+    this.newQuizBtn.style.display = "inline-block";
+    this.quitQuizBtn.style.display = "inline-block";
+
     this.nextQuiz();
   }
 
