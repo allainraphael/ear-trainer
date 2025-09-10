@@ -189,7 +189,7 @@ function formatFreqLabel(freq) {
       this.frequencyBands[`b${i + 1}`] = {
         low,
         high,
-        color: `hsla(${i * 24},100%,50%,0.6)`,
+        color: `hsla(${i * 24},100%,50%,0.55)`,
         name: formatFreqLabel(freqs[i])
       };
     }
@@ -204,7 +204,7 @@ function formatFreqLabel(freq) {
       this.frequencyBands[`b${i + 1}`] = {
         low,
         high,
-        color: `hsla(${i * 12},100%,50%,0.6)`,
+        color: `hsla(${i * 12},100%,50%,0.55)`,
         name: formatFreqLabel(freqs[i])
       };
     }
@@ -375,20 +375,10 @@ play(filteredBand=null) {
         ctx.fillRect(x1, 0, x2 - x1, height);
 
         // clignotement
-        if(this.highlightBand === key){
-  
-        // Bande cliquée → affichée en opaque avec sa propre couleur
-        const band = this.frequencyBands[key];
-        ctx.fillStyle = band.color.replace(/[\d.]+\)$/,'1)'); // force alpha = 1
-        ctx.fillRect(x1, 0, x2 - x1, height);
-      } else {
-        // Autres bandes → affichées normalement (ex: 0.5 de transparence)
-        const band = this.frequencyBands[key];
-        ctx.fillStyle = band.color; 
-        ctx.fillRect(x1, 0, x2 - x1, height);
+        if(this.highlightBand===key){
+  ctx.fillStyle=`rgba(255,255,255,${this.highlightBandOpacity})`;
+  ctx.fillRect(x1,0,x2-x1,height);
 }
-
-
         // nom de la bande
         ctx.fillStyle = '#fff';
         ctx.font = '12px Arial';
