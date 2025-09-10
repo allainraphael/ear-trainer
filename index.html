@@ -385,24 +385,14 @@ class AudioApp {
     if(!this.buffer) return;
     if(this.audioContext.state === "suspended") this.audioContext.resume();
 
-    // STOP des sources existantes
-    if(isQuiz){
-    this.stopSource('quizSource');
-} else {
-    this.stopSource('mainSource');
-    this.isPlaying = false;
-    if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
-}
+    // stop source existante
+    if(isQuiz) this.stopSource('quizSource');
+    else this.stopSource('mainSource');
 
+    // nouvelle source
     const source = this.audioContext.createBufferSource();
-source.buffer = this.buffer;
-source.loop = this.isLooping;
-
-// connexion
-source.connect(this.gainNode);
-this.mainSource = source;
-source.start(0, this.pauseTime);
-this.isPlaying = true;
+    source.buffer = this.buffer;
+    source.loop = this.isLooping;
 
     if(filteredBand){
         const band = this.frequencyBands[filteredBand];
@@ -415,6 +405,7 @@ this.isPlaying = true;
         this.filterNode = filter;
     } else {
         source.connect(this.gainNode);
+        this.filterNode = null;
     }
 
     source.start(0, this.pauseTime);
