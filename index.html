@@ -205,50 +205,47 @@ class AudioApp {
  toggleNoise(type){
   this.initAudio();
 
+  const whiteActive = this.whiteNoiseBtn.classList.contains("active");
+  const pinkActive = this.pinkNoiseBtn.classList.contains("active");
+
+  // stopper tout son en cours
+  if(this.source){
+    try{ this.source.stop(); } catch(e){}
+    this.source.disconnect();
+    this.source = null;
+    this.isPlaying = false;
+  }
+
+  // gestion des boutons
   if(type === "white"){
-    if(this.whiteNoiseBtn.classList.contains("active")){
+    if(whiteActive){
       // désactivation
       this.whiteNoiseBtn.classList.remove("active");
-      this.buffer = this.loadedBuffer; // revenir au son chargé
-      this.pauseTime = 0;
-      // stopper le son
-      if(this.source){
-        try{ this.source.stop(); } catch(e){}
-        this.source.disconnect();
-        this.source = null;
-        this.isPlaying = false;
-      }
+      this.buffer = this.loadedBuffer;
+      // relancer lecture fichier si présent
+      if(this.buffer) this.play();
     } else {
       // activation bruit blanc
       this.whiteNoiseBtn.classList.add("active");
-      this.pinkNoiseBtn.classList.remove("active"); // désactiver l'autre
+      this.pinkNoiseBtn.classList.remove("active");
       this.buffer = this.generateWhiteNoise(10);
-      this.pauseTime = 0;
       this.play();
     }
   } else if(type === "pink"){
-    if(this.pinkNoiseBtn.classList.contains("active")){
+    if(pinkActive){
       // désactivation
       this.pinkNoiseBtn.classList.remove("active");
-      this.buffer = this.loadedBuffer; // revenir au son chargé
-      this.pauseTime = 0;
-      if(this.source){
-        try{ this.source.stop(); } catch(e){}
-        this.source.disconnect();
-        this.source = null;
-        this.isPlaying = false;
-      }
+      this.buffer = this.loadedBuffer;
+      if(this.buffer) this.play();
     } else {
       // activation bruit rose
       this.pinkNoiseBtn.classList.add("active");
-      this.whiteNoiseBtn.classList.remove("active"); 
+      this.whiteNoiseBtn.classList.remove("active");
       this.buffer = this.generatePinkNoise(10);
-      this.pauseTime = 0;
       this.play();
     }
   }
 }
-
 
   generateWhiteNoise(duration=5){
     const sr=this.audioContext.sampleRate;
