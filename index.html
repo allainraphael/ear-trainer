@@ -549,15 +549,22 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
   }
 
   nextQuiz(){
-    const keys=Object.keys(this.frequencyBands);
-    this.quizBand=keys[Math.floor(Math.random()*keys.length)];
-    this.currentBand=null;
-    this.modeQuestion=true;
-    this.play(this.quizBand, true); // <-- flux filtré quiz
-    this.quizCount++;
-    this.progressBar.style.width=((this.quizCount-1)/this.totalQuestions*100)+"%";
-}
+    const keys = Object.keys(this.frequencyBands);
+    let newBand;
 
+    // éviter de répéter la même bande que la précédente
+    do {
+        newBand = keys[Math.floor(Math.random() * keys.length)];
+    } while(newBand === this.quizBand && keys.length > 1);
+
+    this.quizBand = newBand;
+    this.currentBand = null;
+    this.modeQuestion = true;
+    this.play(this.quizBand, true); // flux filtré quiz
+    this.quizCount++;
+    this.progressBar.style.width = ((this.quizCount - 1) / this.totalQuestions * 100) + "%";
+}
+  
   checkQuizAnswer(selectedKey){
   const correct = selectedKey === this.quizBand;
   this.currentBand = this.quizBand; // bande toujours allumée en dessous
