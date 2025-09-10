@@ -232,8 +232,9 @@ class AudioApp {
     }
   }
 
-  this.currentBand = null;
-  this.play();
+   // ne pas relancer le son ici
+    this.currentBand = null; // reset sélection bande
+    this.drawSpectrum();      // juste redessiner le canvas
 }
 
   async loadFile(e){
