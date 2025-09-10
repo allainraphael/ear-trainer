@@ -20,7 +20,6 @@ canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radiu
 #whiteNoiseBtn.active {
   background: white;   /* fond blanc */
   color: black;        /* texte noir pour contraste */
-  font-weight: bold;
 }
 
 /* Bouton rose actif */
@@ -203,30 +202,43 @@ class AudioApp {
     this.play();
   }
 
-  toggleNoise(type){
-    this.initAudio();
-    if(type==="white"){
-      if(this.whiteNoiseBtn.classList.contains("active")){
-        this.whiteNoiseBtn.classList.remove("active");
-        this.buffer=this.loadedBuffer;
-      } else {
-        this.whiteNoiseBtn.classList.add("active");
-        this.pinkNoiseBtn.classList.remove("active");
-        this.buffer=this.generateWhiteNoise(10);
-      }
-    } else if(type==="pink"){
-      if(this.pinkNoiseBtn.classList.contains("active")){
-        this.pinkNoiseBtn.classList.remove("active");
-        this.buffer=this.loadedBuffer;
-      } else {
-        this.pinkNoiseBtn.classList.add("active");
-        this.whiteNoiseBtn.classList.remove("active");
-        this.buffer=this.generatePinkNoise(10);
-      }
+ toggleNoise(type){
+  this.initAudio();
+
+  if(type === "white"){
+    if(this.whiteNoiseBtn.classList.contains("active")){
+      // désactivation
+      this.whiteNoiseBtn.classList.remove("active");
+      this.buffer = this.loadedBuffer; // revenir au son chargé
+      this.pauseTime = 0;
+      if(!this.buffer) this.stop(); // si pas de fichier chargé, arrêter le son
+      else this.play();
+    } else {
+      // activation bruit blanc
+      this.whiteNoiseBtn.classList.add("active");
+      this.pinkNoiseBtn.classList.remove("active"); // désactiver l'autre
+      this.buffer = this.generateWhiteNoise(10);
+      this.pauseTime = 0;
+      this.play();
     }
-    this.pauseTime=0;
-    this.play();
+  } else if(type === "pink"){
+    if(this.pinkNoiseBtn.classList.contains("active")){
+      // désactivation
+      this.pinkNoiseBtn.classList.remove("active");
+      this.buffer = this.loadedBuffer; // revenir au son chargé
+      this.pauseTime = 0;
+      if(!this.buffer) this.stop();
+      else this.play();
+    } else {
+      // activation bruit rose
+      this.pinkNoiseBtn.classList.add("active");
+      this.whiteNoiseBtn.classList.remove("active");
+      this.buffer = this.generatePinkNoise(10);
+      this.pauseTime = 0;
+      this.play();
+    }
   }
+}
 
   generateWhiteNoise(duration=5){
     const sr=this.audioContext.sampleRate;
