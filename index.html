@@ -292,30 +292,44 @@ class AudioApp {
     const pinkActive = this.pinkNoiseBtn.classList.contains("active");
 
     if(type === "white"){
-      if(whiteActive){
-        this.whiteNoiseBtn.classList.remove("active");
-        this.buffer = this.loadedBuffer;
-        if(this.buffer) this.play();
-      } else {
-        this.whiteNoiseBtn.classList.add("active");
-        this.pinkNoiseBtn.classList.remove("active");
-        this.buffer = this.generateWhiteNoise(10);
-        this.play();
-        this.playBtn.classList.add("active"); // bouton Play devient vert
-      }
-    } else if(type === "pink"){
-      if(pinkActive){
-        this.pinkNoiseBtn.classList.remove("active");
-        this.buffer = this.loadedBuffer;
-        if(this.buffer) this.play();
-      } else {
-        this.pinkNoiseBtn.classList.add("active");
-        this.whiteNoiseBtn.classList.remove("active");
-        this.buffer = this.generatePinkNoise(10);
-        this.play();
-        this.playBtn.classList.add("active"); // bouton Play devient vert
-      }
+  if(whiteActive){
+    this.whiteNoiseBtn.classList.remove("active");
+    this.buffer = this.loadedBuffer;
+    if(this.buffer) {
+      this.play();
+      this.playBtn.classList.add("active"); // si on relance lecture du fichier
+    } else {
+      this.playBtn.classList.remove("active"); // si rien à jouer
     }
+  } else {
+    this.whiteNoiseBtn.classList.add("active");
+    this.pinkNoiseBtn.classList.remove("active");
+    this.buffer = this.generateWhiteNoise(10);
+    this.play();
+    this.playBtn.classList.add("active"); // bouton devient vert
+  }
+}
+
+    if(type === "pink"){
+  if(pinkActive){
+    this.pinkNoiseBtn.classList.remove("active");
+    this.buffer = this.loadedBuffer;
+    if(this.buffer) {
+      this.play();
+      this.playBtn.classList.add("active");
+    } else {
+      this.playBtn.classList.remove("active");
+    }
+  } 
+  
+  else {
+    this.pinkNoiseBtn.classList.add("active");
+    this.whiteNoiseBtn.classList.remove("active");
+    this.buffer = this.generatePinkNoise(10);
+    this.play();
+    this.playBtn.classList.add("active");
+  }
+}
   }
 
   generateWhiteNoise(duration=5){
