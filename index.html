@@ -6,6 +6,7 @@
 <style>
 body { background:#111; color:white; font-family:Arial; text-align:center; }
 canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radius:12px; cursor:pointer; }
+  
 #noiseButtons button {
   padding: 8px 16px;
   margin: 5px;
@@ -14,11 +15,25 @@ canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radiu
   background: #eee;
   cursor: pointer;
 }
+
+  /* Bouton actif général */
 #noiseButtons button.active {
-  background: #333;
+  font-weight: bold;
   color: white;
+}
+
+/* Bouton blanc actif */
+#whiteNoiseBtn.active {
+  background: white;   /* fond blanc */
+  color: black;        /* texte noir pour contraste */
   font-weight: bold;
 }
+
+/* Bouton rose actif */
+#pinkNoiseBtn.active {
+  background: #ff69b4; /* rose vif */
+}
+  
 button, select { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; }
 .active { background:#4facfe; color:white; }
 #resultsTable { margin:20px auto; border-collapse:collapse; width:80%; max-width:700px; }
