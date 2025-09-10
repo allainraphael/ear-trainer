@@ -310,55 +310,48 @@ class AudioApp {
   
   toggleNoise(type){
     this.initAudio();
-    this.stopSource('mainSource');
-    this.stopSource('quizSource');
+    this.cleanupSources(); // stoppe mainSource et quizSource
 
-    if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} this.mainSource=null; }
-    if(this.quizSource){ try{ this.quizSource.stop(); } catch(e){} this.quizSource=null; }
-
-    const whiteActive = this.whiteNoiseBtn.classList.contains("active");
-    const pinkActive = this.pinkNoiseBtn.classList.contains("active");
+    this.pauseTime = 0;   // repartir depuis le début
 
     if(type === "white"){
-  if(whiteActive){
-    this.whiteNoiseBtn.classList.remove("active");
-    this.buffer = this.loadedBuffer;
-    if(this.buffer) {
-      this.play();
-      this.playBtn.classList.add("active"); // si on relance lecture du fichier
-    } else {
-      this.playBtn.classList.remove("active"); // si rien à jouer
+        const isActive = this.whiteNoiseBtn.classList.contains("active");
+        this.whiteNoiseBtn.classList.toggle("active", !isActive);
+        this.pinkNoiseBtn.classList.remove("active");
+        if(!isActive){
+            this.buffer = this.generateWhiteNoise(10);
+            this.play();
+            this.playBtn.classList.add("active");
+        } else {
+            this.buffer = this.loadedBuffer;
+            if(this.buffer){
+                this.play();
+                this.playBtn.classList.add("active");
+            } else {
+                this.playBtn.classList.remove("active");
+            }
+        }
     }
-  } else {
-    this.whiteNoiseBtn.classList.add("active");
-    this.pinkNoiseBtn.classList.remove("active");
-    this.buffer = this.generateWhiteNoise(10);
-    this.play();
-    this.playBtn.classList.add("active"); // bouton devient vert
-  }
-}
 
     if(type === "pink"){
-  if(pinkActive){
-    this.pinkNoiseBtn.classList.remove("active");
-    this.buffer = this.loadedBuffer;
-    if(this.buffer) {
-      this.play();
-      this.playBtn.classList.add("active");
-    } else {
-      this.playBtn.classList.remove("active");
+        const isActive = this.pinkNoiseBtn.classList.contains("active");
+        this.pinkNoiseBtn.classList.toggle("active", !isActive);
+        this.whiteNoiseBtn.classList.remove("active");
+        if(!isActive){
+            this.buffer = this.generatePinkNoise(10);
+            this.play();
+            this.playBtn.classList.add("active");
+        } else {
+            this.buffer = this.loadedBuffer;
+            if(this.buffer){
+                this.play();
+                this.playBtn.classList.add("active");
+            } else {
+                this.playBtn.classList.remove("active");
+            }
+        }
     }
-  } 
-  
-  else {
-    this.pinkNoiseBtn.classList.add("active");
-    this.whiteNoiseBtn.classList.remove("active");
-    this.buffer = this.generatePinkNoise(10);
-    this.play();
-    this.playBtn.classList.add("active");
-  }
 }
-  }
 
   generateWhiteNoise(duration=5){
     const sr=this.audioContext.sampleRate;
@@ -402,8 +395,14 @@ class AudioApp {
 }
 
     const source = this.audioContext.createBufferSource();
-    source.buffer = this.buffer;
-    source.loop = this.isLooping;
+source.buffer = this.buffer;
+source.loop = this.isLooping;
+
+// connexion
+source.connect(this.gainNode);
+this.mainSource = source;
+source.start(0, this.pauseTime);
+this.isPlaying = true;
 
     if(filteredBand){
         const band = this.frequencyBands[filteredBand];
