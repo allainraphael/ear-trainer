@@ -202,15 +202,12 @@ class AudioApp {
 
   toggleNoise(type){
     this.initAudio();
+
+    if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} this.mainSource=null; }
+    if(this.quizSource){ try{ this.quizSource.stop(); } catch(e){} this.quizSource=null; }
+
     const whiteActive = this.whiteNoiseBtn.classList.contains("active");
     const pinkActive = this.pinkNoiseBtn.classList.contains("active");
-
-    if(this.source){
-      try{ this.source.stop(); } catch(e){}
-      this.source.disconnect();
-      this.source = null;
-      this.isPlaying = false;
-    }
 
     if(type === "white"){
       if(whiteActive){
@@ -278,42 +275,46 @@ class AudioApp {
     }
   }
 
-  play(filteredBand=null){
+  play(filteredBand=null, isQuiz=false){
     if(!this.buffer) return;
     if(this.audioContext.state==="suspended") this.audioContext.resume();
 
-    if(this.source){ 
-      try{ this.source.stop(); } catch(e){}
-      this.source.disconnect();
-      this.source=null;
-    }
-
-    this.source=this.audioContext.createBufferSource();
-    this.source.buffer=this.buffer;
-    this.source.loop=this.isLooping;
-
-    if(this.filterNode){ this.filterNode.disconnect(); this.filterNode=null; }
-
-    const bandKey=filteredBand||this.currentBand;
-    if(bandKey){
-      const band=this.frequencyBands[bandKey];
-      const filter=this.audioContext.createBiquadFilter();
-      filter.type="bandpass";
-      filter.frequency.value=Math.sqrt(band.low*band.high);
-      filter.Q.value=filter.frequency.value/(band.high-band.low);
-      this.source.connect(filter);
-      filter.connect(this.gainNode);
-      this.filterNode=filter;
+    // stopper l'ancienne source correspondante
+    if(isQuiz){
+        if(this.quizSource){ try{ this.quizSource.stop(); } catch(e){} }
+        this.quizSource=null;
     } else {
-      this.source.connect(this.gainNode);
+        if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
+        this.mainSource=null;
     }
 
-    this.startTime=this.audioContext.currentTime-this.pauseTime;
-    this.source.start(0,this.pauseTime);
-    this.isPlaying=true;
+    const source = this.audioContext.createBufferSource();
+    source.buffer=this.buffer;
+    source.loop=this.isLooping;
 
-    if(!this.animationId) this.animate();
-  }
+    if(isQuiz && filteredBand){
+        // flux filtré pour quiz
+        const band=this.frequencyBands[filteredBand];
+        const filter=this.audioContext.createBiquadFilter();
+        filter.type="bandpass";
+        filter.frequency.value=Math.sqrt(band.low*band.high);
+        filter.Q.value=filter.frequency.value/(band.high-band.low);
+        source.connect(filter);
+        filter.connect(this.gainNode);
+        this.filterNode=filter;
+        source.start(0);
+        this.quizSource=source;
+    } else if(!isQuiz){
+        // flux principal pour spectrogramme complet
+        source.connect(this.gainNode);
+        source.start(0,this.pauseTime);
+        this.mainSource=source;
+        this.startTime=this.audioContext.currentTime-this.pauseTime;
+        this.isPlaying=true;
+
+        if(!this.animationId) this.animate();
+    }
+}
 
   togglePlay(){
     if(!this.isPlaying) this.play();
@@ -471,10 +472,10 @@ drawSpectrum() {
     this.quizBand=keys[Math.floor(Math.random()*keys.length)];
     this.currentBand=null;
     this.modeQuestion=true;
-    this.play(this.quizBand);
+    this.play(this.quizBand, true); // <-- flux filtré quiz
     this.quizCount++;
     this.progressBar.style.width=((this.quizCount-1)/this.totalQuestions*100)+"%";
-  }
+}
 
   checkQuizAnswer(selectedKey){
   const correct = selectedKey === this.quizBand;
