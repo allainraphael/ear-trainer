@@ -594,14 +594,18 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
   // fin du clignotement
   setTimeout(()=>{
     clearInterval(this.clignotementInterval);
-    this.highlightBandOpacity = 0.8; // laisse la bande allumée
+
+    // --- ÉTEINDRE la bande après le clignotement ---
+    this.highlightBand = null;
+    this.currentBand = null;
+    this.highlightBandOpacity = 0.8;
+
     if(this.quizCount < this.totalQuestions) {
       this.nextQuiz();
     } else {
-      // arrêter le son après la 10e question
-      if(this.source) {
-        try { this.source.stop(); } catch(e){}
-        this.isPlaying = false;
+      if(this.mainSource){
+          try { this.mainSource.stop(); } catch(e){}
+          this.isPlaying = false;
       }
       this.endQuiz();
     }
