@@ -320,11 +320,14 @@ class AudioApp {
         this.pinkNoiseBtn.classList.remove("active");
         if(!isActive){
             this.buffer = this.generateWhiteNoise(10);
+            this.cleanupSources();  // ← ici on stoppe toute source existante
             this.play();
             this.playBtn.classList.add("active");
         } else {
             this.buffer = this.loadedBuffer;
+            this.cleanupSources();
             if(this.buffer){
+                this.cleanupSources();  // ← ici on stoppe toute source existante
                 this.play();
                 this.playBtn.classList.add("active");
             } else {
@@ -343,6 +346,7 @@ class AudioApp {
             this.playBtn.classList.add("active");
         } else {
             this.buffer = this.loadedBuffer;
+            this.cleanupSources();
             if(this.buffer){
                 this.play();
                 this.playBtn.classList.add("active");
@@ -385,15 +389,23 @@ class AudioApp {
     if(!this.buffer) return;
     if(this.audioContext.state === "suspended") this.audioContext.resume();
 
-    // stop source existante
-    if(isQuiz) this.stopSource('quizSource');
-    else this.stopSource('mainSource');
+     // stop des sources existantes
+    if(isQuiz){
+        this.stopSource('quizSource');
+    } else {
+        this.stopSource('mainSource');
+        this.isPlaying = false;
+        if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
+    }
 
     // nouvelle source
     const source = this.audioContext.createBufferSource();
     source.buffer = this.buffer;
     source.loop = this.isLooping;
 
+     // connexion principale
+    source.connect(this.gainNode);
+    
     if(filteredBand){
         const band = this.frequencyBands[filteredBand];
         const filter = this.audioContext.createBiquadFilter();
@@ -403,12 +415,7 @@ class AudioApp {
         source.connect(filter);
         filter.connect(this.gainNode);
         this.filterNode = filter;
-    } else {
-        source.connect(this.gainNode);
-        this.filterNode = null;
     }
-
-    source.start(0, this.pauseTime);
 
     if(isQuiz){
         this.quizSource = source;
@@ -418,6 +425,8 @@ class AudioApp {
         this.isPlaying = true;
         if(!this.animationId) this.animate();
     }
+
+    source.start(0, this.pauseTime);
 }
 
   togglePlay(){
