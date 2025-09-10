@@ -438,7 +438,15 @@ class AudioApp {
 
   setVolume(val){ if(this.gainNode) this.gainNode.gain.value=val; }
 
-  resetBand(){ this.currentBand=null; if(this.isPlaying) this.play(); }
+  resetBand(){
+  this.currentBand = null;
+  if(this.isPlaying) {
+    // 🟢 Sauvegarder la position de lecture actuelle
+    this.pauseTime = this.audioContext.currentTime - this.startTime;
+    // Rejouer depuis cette position sans filtre
+    this.play();
+  }
+}
   
   frequencyToX(freq,width){ const min=20,max=20000; const logMin=Math.log10(min), logMax=Math.log10(max); const ratio=(Math.log10(freq)-logMin)/(logMax-logMin); return ratio*width; }
 
@@ -559,6 +567,11 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
                 if(this.currentBand === key){
                     this.resetBand();
                 } else {
+                    // 🟢 Sauvegarder la position de lecture si le son joue
+                    if (this.isPlaying) {
+                        this.pauseTime = this.audioContext.currentTime - this.startTime;
+                    }
+
                     this.currentBand = key;
                     this.play(key);
                 }
@@ -567,7 +580,6 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
         }
     }
 }
-
 
   // ===== QUIZ =====
   startQuizSeries(){
