@@ -390,26 +390,28 @@ class AudioApp {
     source.buffer=this.buffer;
     source.loop=this.isLooping;
 
-    if(isQuiz && filteredBand){
-        // flux filtré pour quiz
-        const band=this.frequencyBands[filteredBand];
-        const filter=this.audioContext.createBiquadFilter();
+    if(filteredBand){
+        // flux filtré pour bande sélectionnée (quiz ou clic)
+        const band = this.frequencyBands[filteredBand];
+        const filter = this.audioContext.createBiquadFilter();
         filter.type="bandpass";
-        filter.frequency.value=Math.sqrt(band.low*band.high);
-        filter.Q.value=filter.frequency.value/(band.high-band.low);
+        filter.frequency.value = Math.sqrt(band.low * band.high);
+        filter.Q.value = filter.frequency.value / (band.high - band.low);
         source.connect(filter);
         filter.connect(this.gainNode);
-        this.filterNode=filter;
-        source.start(0);
-        this.quizSource=source;
-    } else if(!isQuiz){
-        // flux principal pour spectrogramme complet
+        this.filterNode = filter;
+    } else {
+        // flux complet (spectrogramme complet)
         source.connect(this.gainNode);
-        source.start(0,this.pauseTime);
-        this.mainSource=source;
-        this.startTime=this.audioContext.currentTime-this.pauseTime;
-        this.isPlaying=true;
+    }
 
+    source.start(0, this.pauseTime);
+    if(isQuiz){
+        this.quizSource = source;
+    } else {
+        this.mainSource = source;
+        this.startTime = this.audioContext.currentTime - this.pauseTime;
+        this.isPlaying = true;
         if(!this.animationId) this.animate();
     }
 }
