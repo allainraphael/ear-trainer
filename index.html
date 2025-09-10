@@ -297,8 +297,21 @@ class AudioApp {
     }
   }
   
+  stopSource(sourceName) {
+    if (this[sourceName]) {
+        try { 
+            this[sourceName].stop(); 
+        } catch(e) {}
+        this[sourceName].disconnect();
+        this[sourceName].onended = null;
+        this[sourceName] = null;
+    }
+}
+  
   toggleNoise(type){
     this.initAudio();
+    this.stopSource('mainSource');
+    this.stopSource('quizSource');
 
     if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} this.mainSource=null; }
     if(this.quizSource){ try{ this.quizSource.stop(); } catch(e){} this.quizSource=null; }
@@ -381,14 +394,12 @@ class AudioApp {
 
     // STOP des sources existantes
     if(isQuiz){
-        if(this.quizSource){ try{ this.quizSource.stop(); } catch(e){} }
-        this.quizSource = null;
-    } else {
-        if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
-        this.mainSource = null;
-        this.isPlaying = false;
-        if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
-    }
+    this.stopSource('quizSource');
+} else {
+    this.stopSource('mainSource');
+    this.isPlaying = false;
+    if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
+}
 
     const source = this.audioContext.createBufferSource();
     source.buffer = this.buffer;
@@ -420,15 +431,18 @@ class AudioApp {
 }
 
   togglePlay(){
-    if(!this.isPlaying) {
-        this.play();
-        this.playBtn.classList.add("active"); // bouton en vert
-    } else {
-        if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
+    if(this.isPlaying) {
+        this.stopSource('mainSource');        // stop proprement et déconnecte
         this.pauseTime = this.audioContext.currentTime - this.startTime;
         this.isPlaying = false;
-        if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
-        this.playBtn.classList.remove("active"); // bouton normal
+        if(this.animationId){
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        this.playBtn.classList.remove("active");
+    } else {
+        this.play();                           // reprend la lecture depuis pauseTime
+        this.playBtn.classList.add("active");
     }
 }
 
@@ -673,6 +687,21 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
   }, totalTime);
 }
 
+  // méthode utilitaire pour stopper toutes les sources et annuler l’animation
+cleanupSources(){
+    ['mainSource','quizSource'].forEach(key => {
+        if(this[key]){
+            try { this[key].stop(); } catch(e){}
+            this[key].disconnect();
+            this[key] = null;
+        }
+    });
+
+    if(this.animationId){
+        cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+    }
+}
   endQuiz(){
     this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
     this.progressBar.style.width = "100%";
@@ -681,21 +710,21 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
     this.quitQuizBtn.style.display = "inline-block";
     this.quizActive = false;
 
-    // --- Éteindre la bande et stopper le son ---
+   // Nettoyage complet des sources
+    this.cleanupSources();
+
+    // Réinitialiser l’état du play
+    this.isPlaying = false;
+    this.playBtn.classList.remove("active");
+    this.playBtn.textContent = "▶️";
     this.highlightBand = null;
     this.currentBand = null;
-    if(this.quizSource){
-    try { this.quizSource.stop(); } catch(e){}
-    this.quizSource = null;
-        this.animationId && cancelAnimationFrame(this.animationId);
-        this.animationId = null;
-    }
-
-    // --- Réinitialiser le bouton Play ---
-    this.isPlaying = false;
+    this.animationId && cancelAnimationFrame(this.animationId);
+    this.animationId = null;
     this.playBtn.classList.remove("active");  // retire le vert
     this.playBtn.textContent = "▶️";          // remet l’icône play
-}
+        
+    }
 
   quitQuiz(){
     this.quizActive = false;
@@ -706,6 +735,9 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
     this.replayBtn.style.display = "none";
     this.newQuizBtn.style.display = "none";
     this.quitQuizBtn.style.display = "none";
+
+     // Nettoyage complet des sources
+    this.cleanupSources();
 
     // --- Éteindre la bande ---
     this.highlightBand = null;
