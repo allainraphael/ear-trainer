@@ -670,22 +670,28 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
 }
 
   endQuiz(){
-    this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
-    this.progressBar.style.width="100%";
-    this.replayBtn.style.display="inline-block";
-    this.newQuizBtn.style.display="inline-block";
-    this.quitQuizBtn.style.display="inline-block";
-    this.quizActive=false;
+    this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
+    this.progressBar.style.width = "100%";
+    this.replayBtn.style.display = "inline-block";
+    this.newQuizBtn.style.display = "inline-block";
+    this.quitQuizBtn.style.display = "inline-block";
+    this.quizActive = false;
 
-    // --- NOUVEAU : éteindre la bande et stopper le son ---
+    // --- Éteindre la bande et stopper le son ---
     this.highlightBand = null;
     this.currentBand = null;
     if(this.source){
-        try { this.source.stop(); } catch(e){}
-        this.isPlaying = false;
+        try { 
+            this.source.stop(); 
+        } catch(e){}
         this.animationId && cancelAnimationFrame(this.animationId);
         this.animationId = null;
     }
+
+    // --- Réinitialiser le bouton Play ---
+    this.isPlaying = false;
+    this.playBtn.classList.remove("active");  // retire le vert
+    this.playBtn.textContent = "▶️";          // remet l’icône play
 }
 
   quitQuiz(){
