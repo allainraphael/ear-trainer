@@ -6,6 +6,20 @@
 <style>
 body { background:#111; color:white; font-family:Arial; text-align:center; }
 canvas { background:#000; width:90%; height:400px; margin-top:20px; border-radius:12px; cursor:pointer; }
+#noiseButtons button {
+  padding: 8px 16px;
+  margin: 5px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #eee;
+  cursor: pointer;
+}
+
+#noiseButtons button.active {
+  background: #333;
+  color: white;
+  font-weight: bold;
+}
 button, select { margin:5px; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; }
 .active { background:#4facfe; color:white; }
 #resultsTable { margin:20px auto; border-collapse:collapse; width:80%; max-width:700px; }
@@ -24,13 +38,12 @@ button, select { margin:5px; padding:10px 20px; border:none; border-radius:8px; 
 <body>
 <h1>Ear Training</h1>
 
-<input type="file" id="fileInput" accept="audio/*"><br>
+<div id="noiseButtons">
+  <button id="whiteNoiseBtn">Bruit blanc</button>
+  <button id="pinkNoiseBtn">Bruit rose</button>
+</div>
 
-<select id="noiseSelect">
-  <option value="none" selected>Aucun bruit</option>
-  <option value="white">Bruit blanc</option>
-  <option value="pink">Bruit rose</option>
-</select>
+<input type="file" id="fileInput" accept="audio/*"><br>
 
 <select id="modeSelect">
   <option value="7" selected>7 bandes</option>
@@ -98,6 +111,10 @@ function formatFreqLabel(freq) {
     this.progressContainer = document.getElementById("progressContainer");
     this.progressBar = document.getElementById("progressBar");
     this.modeSelect = document.getElementById("modeSelect");
+    this.whiteNoiseBtn = document.getElementById("whiteNoiseBtn");
+    this.pinkNoiseBtn = document.getElementById("pinkNoiseBtn");
+    this.whiteNoiseBtn.addEventListener("click", () => this.toggleNoise("white"));
+    this.pinkNoiseBtn.addEventListener("click", () => this.toggleNoise("pink"));
 
     // audio
     this.audioContext = null;
@@ -237,6 +254,35 @@ function formatFreqLabel(freq) {
     this.pauseTime = 0;
     this.play();
   }
+
+    toggleNoise(type){
+  if(type === "white"){
+    if(this.whiteNoiseBtn.classList.contains("active")){
+      // désactivation
+      this.whiteNoiseBtn.classList.remove("active");
+      this.buffer = this.loadedBuffer; // revenir au son chargé
+    } else {
+      // activation bruit blanc
+      this.whiteNoiseBtn.classList.add("active");
+      this.pinkNoiseBtn.classList.remove("active"); // désactiver l'autre
+      this.buffer = this.generateWhiteNoise(10);
+    }
+  } else if(type === "pink"){
+    if(this.pinkNoiseBtn.classList.contains("active")){
+      // désactivation
+      this.pinkNoiseBtn.classList.remove("active");
+      this.buffer = this.loadedBuffer; // revenir au son chargé
+    } else {
+      // activation bruit rose
+      this.pinkNoiseBtn.classList.add("active");
+      this.whiteNoiseBtn.classList.remove("active");
+      this.buffer = this.generatePinkNoise(10);
+    }
+  }
+
+  this.pauseTime = 0;
+  this.play();
+}
 
   selectNoise(){
   // crée ou initialise la chaîne audio (gainNode + analyser) si nécessaire
@@ -380,7 +426,7 @@ play(filteredBand=null) {
 
   drawSpectrum() {
     const ctx = this.ctx, width = this.canvas.width, height = this.canvas.height;
-    ctx.fillStyle = "white";
+    ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, width, height);
 
     // --- affichage des bandes ---
