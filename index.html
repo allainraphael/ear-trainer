@@ -300,11 +300,11 @@ class AudioApp {
   
   updatePlayButton(isPlaying){
     if(isPlaying){
-        this.playBtn.classList.add("active");
-        this.playBtn.textContent = "⏸️";  // pause
+        this.playBtn.classList.add("active");    // bouton vert
+        this.playBtn.textContent = "⏸️ Pause";    // icône pause
     } else {
-        this.playBtn.classList.remove("active");
-        this.playBtn.textContent = "▶️";  // play
+        this.playBtn.classList.remove("active"); // bouton normal
+        this.playBtn.textContent = "▶️ Play";    // icône lecture
     }
 }
 
