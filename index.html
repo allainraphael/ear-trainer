@@ -473,33 +473,32 @@ drawSpectrum() {
   animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
 
   handleCanvasClick(e){
-  const rect = this.canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  const x = (e.clientX - rect.left) * dpr;
-  const y = (e.clientY - rect.top) * dpr;
+    const rect = this.canvas.getBoundingClientRect();
+    // coordonnées CSS (correspondent à this.width/this.height)
+    const x = (e.clientX - rect.left) * (this.width / rect.width);
+    const y = (e.clientY - rect.top) * (this.height / rect.height);
 
-  for(const key in this.frequencyBands){
-    const band = this.frequencyBands[key];
-    const x1 = this.frequencyToX(band.low, width);
-    const x2 = this.frequencyToX(band.high, width);
+    for(const key in this.frequencyBands){
+        const band = this.frequencyBands[key];
+        const x1 = this.frequencyToX(band.low, this.width);
+        const x2 = this.frequencyToX(band.high, this.width);
 
-    if(x >= x1 && x <= x2){
-      if(this.quizActive){
-        this.checkQuizAnswer(key);
-      } else {
-        if(this.currentBand === key){
-          // clic sur la même bande → reset
-          this.resetBand();
-        } else {
-          // clic sur une autre bande → sélectionner la nouvelle
-          this.currentBand = key;
-          this.play(key);
+        if(x >= x1 && x <= x2){
+            if(this.quizActive){
+                this.checkQuizAnswer(key);
+            } else {
+                if(this.currentBand === key){
+                    this.resetBand();
+                } else {
+                    this.currentBand = key;
+                    this.play(key);
+                }
+            }
+            break;
         }
-      }
-      break;
     }
-  }
 }
+
 
   // ===== QUIZ =====
   startQuizSeries(){
