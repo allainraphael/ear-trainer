@@ -365,7 +365,7 @@ class AudioApp {
   togglePlay(){
     if(!this.isPlaying) this.play();
     else {
-      if(this.source){ try{ this.source.stop(); } catch(e){} }
+      if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
       this.pauseTime=this.audioContext.currentTime-this.startTime;
       this.isPlaying=false;
       if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId=null; }
@@ -376,7 +376,7 @@ class AudioApp {
     this.isLooping=!this.isLooping;
     this.loopBtn.classList.toggle("active",this.isLooping);
     this.loopBtn.textContent=this.isLooping?"🔁 Boucle ON":"🔁 Boucle OFF";
-    if(this.source) this.source.loop=this.isLooping;
+    if(this.mainSource) this.mainSource.loop=this.isLooping;
   }
 
   setVolume(val){ if(this.gainNode) this.gainNode.gain.value=val; }
