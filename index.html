@@ -474,8 +474,9 @@ drawSpectrum() {
 
   handleCanvasClick(e){
   const rect = this.canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const width = this.canvas.width;
+  const dpr = window.devicePixelRatio || 1;
+  const x = (e.clientX - rect.left) * dpr;
+  const y = (e.clientY - rect.top) * dpr;
 
   for(const key in this.frequencyBands){
     const band = this.frequencyBands[key];
