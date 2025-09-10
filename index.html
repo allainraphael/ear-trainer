@@ -144,8 +144,6 @@ class AudioApp {
     this.isLooping = true;
     this.startTime = 0;
     this.pauseTime = 0;
-
-    this.initAudio(); // 🔹 initialise gainNode et analyser immédiatement
     
     // DOM
     this.fileInput = document.getElementById("fileInput");
@@ -157,6 +155,9 @@ class AudioApp {
     this.newQuizBtn = document.getElementById("newQuizBtn");
     this.quitQuizBtn = document.getElementById("quitQuizBtn");
     this.volumeSlider = document.getElementById("volume");
+    
+    this.initAudio(); // initialiser gainNode / analyser maintenant que volumeSlider existe
+    
     this.canvas = document.getElementById("analyser");
     this.ctx = this.canvas.getContext("2d");
     this.resizeCanvas();
@@ -389,7 +390,7 @@ class AudioApp {
     if(!this.buffer) return;
     if(this.audioContext.state === "suspended") this.audioContext.resume();
 
-     // stop des sources existantes
+    // stop des sources existantes
     if(isQuiz){
         this.stopSource('quizSource');
     } else {
@@ -403,10 +404,8 @@ class AudioApp {
     source.buffer = this.buffer;
     source.loop = this.isLooping;
 
-     // connexion principale
-    source.connect(this.gainNode);
-    
     if(filteredBand){
+        // branche filtrée : source -> filter -> gainNode -> analyser -> destination
         const band = this.frequencyBands[filteredBand];
         const filter = this.audioContext.createBiquadFilter();
         filter.type = "bandpass";
@@ -415,6 +414,9 @@ class AudioApp {
         source.connect(filter);
         filter.connect(this.gainNode);
         this.filterNode = filter;
+    } else {
+        // branche complète : source -> gainNode -> analyser -> destination
+        source.connect(this.gainNode);
     }
 
     if(isQuiz){
