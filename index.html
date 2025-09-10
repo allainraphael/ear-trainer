@@ -383,7 +383,7 @@ createSource({ buffer, loop = false, filteredBand = null, isQuiz = false, spectr
         source.connect(filter);
         filter.connect(finalNode);
 
-        if(!isQuiz) this.filterNode = filter;
+        if (!isQuiz) this.filterNode = filter;
     } else {
         source.connect(finalNode);
     }
@@ -391,18 +391,25 @@ createSource({ buffer, loop = false, filteredBand = null, isQuiz = false, spectr
     this[sourceKey] = source;
     source.start(0, isQuiz ? 0 : this.pauseTime);
 
-    if(!isQuiz) {
-        this.isPlaying = true;
-        this.startTime = this.audioContext.currentTime - this.pauseTime;
-        if(!this.animationId) this.animate();
-        this.updatePlayButton(true);
-    }
-
-    // Pour le spectrogramme : choisir si on analyse la source filtrée ou non
-    if(isQuiz) {
-        this.spectroSource = spectroFiltered ? filter || source : buffer; 
+    // 🔹 Spectrogramme : connecter toujours l’AudioNode à l’analyser
+    if (isQuiz) {
+        this.spectroSource = this.audioContext.createGain();
+        if (spectroFiltered && filter) {
+            filter.connect(this.spectroSource);
+        } else {
+            source.connect(this.spectroSource);
+        }
+        this.spectroSource.connect(this.analyser);
     } else {
         this.spectroSource = filter || source;
+    }
+
+    // 🔹 Mise à jour lecture
+    if (!isQuiz) {
+        this.isPlaying = true;
+        this.startTime = this.audioContext.currentTime - this.pauseTime;
+        if (!this.animationId) this.animate();
+        this.updatePlayButton(true);
     }
 
     return source;
@@ -436,35 +443,34 @@ toggleLoop() {
   // 🔹 Toggle bruit blanc / rose
 toggleNoise(type){
     this.initAudio();
-    this.stopSource('mainSource');
-    this.stopSource('quizSource');
+
+    // Arrêter mainSource mais garder quizSource si quiz actif
+    if (!this.quizActive) this.stopSource('mainSource');
     this.pauseTime = 0;
 
     let buffer;
     if(type === 'white') buffer = this.generateWhiteNoise(10);
     if(type === 'pink') buffer = this.generatePinkNoise(10);
 
-    const isActiveWhite = this.whiteNoiseBtn.classList.contains('active');
-    const isActivePink = this.pinkNoiseBtn.classList.contains('active');
+    // Gestion des classes actives
+    this.whiteNoiseBtn.classList.toggle('active', type === 'white');
+    this.pinkNoiseBtn.classList.toggle('active', type === 'pink');
 
-    this.whiteNoiseBtn.classList.toggle('active', type === 'white' ? !isActiveWhite : false);
-    this.pinkNoiseBtn.classList.toggle('active', type === 'pink' ? !isActivePink : false);
-
-    // Déterminer si on est en quiz
-    if(this.quizActive) {
+    if(this.quizActive){
         // Quiz : utiliser quizSource
         this.createSource({
             buffer,
-            loop: true,
-            filteredBand: this.quizBand || null, // si une bande est sélectionnée pour quiz
+            loop: this.isLooping,
+            filteredBand: this.quizBand || null,
             isQuiz: true,
-            spectroFiltered: !this.modeQuestion // spectrogramme filtré uniquement après la bonne réponse
+            spectroFiltered: false // spectrogramme non filtré tant que la question n’est pas répondue
         });
     } else {
         // Mode libre : mainSource filtrée et spectrogramme filtré
+        this.buffer = buffer; // 🔹 pour que play(), resetBand() fonctionnent sur le bruit
         this.createSource({
             buffer,
-            loop: true,
+            loop: this.isLooping,
             filteredBand: this.currentBand || null,
             isQuiz: false
         });
