@@ -240,15 +240,16 @@ class AudioApp {
   
   initAudio(){
     if(!this.gainNode){
-      this.gainNode=this.audioContext.createGain();
-      this.analyser=this.audioContext.createAnalyser();
-      this.analyser.fftSize=2048;
-      this.floatData=new Float32Array(this.analyser.frequencyBinCount);
-      this.gainNode.connect(this.analyser);
-      this.analyser.connect(this.audioContext.destination);
-      this.setVolume(this.volumeSlider.value);
+        this.gainNode=this.audioContext.createGain();
+        this.analyser=this.audioContext.createAnalyser();
+        this.analyser.fftSize=2048;
+        this.floatData=new Float32Array(this.analyser.frequencyBinCount);
+        this.gainNode.connect(this.analyser);
+        this.analyser.connect(this.audioContext.destination);
+        this.setVolume(this.volumeSlider.value);
     }
-  }
+}
+
   
   updatePlayButton(isPlaying){
     if(isPlaying){
@@ -358,7 +359,6 @@ toggleLoop(){
 
   // 🔹 Toggle bruit blanc / rose
 async toggleNoise(type){
-    await this.ensureAudioContext();
     this.stopSource('mainSource');
     this.pauseTime=0;
 
@@ -368,8 +368,15 @@ async toggleNoise(type){
     this.whiteNoiseBtn.classList.toggle('active', type==='white');
     this.pinkNoiseBtn.classList.toggle('active', type==='pink');
 
-    this.play();
-  }
+    // jouer le bruit sans filtre
+    this.createSource({ buffer: this.buffer, loop: this.isLooping, filteredBand: null, isQuiz:false });
+}
+async resumeContext(){
+    if(this.audioContext.state === 'suspended'){
+        await this.audioContext.resume();
+    }
+}
+
 
   setVolume(val){ if(this.gainNode) this.gainNode.gain.value=val; }
 
