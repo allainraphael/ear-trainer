@@ -480,19 +480,23 @@ drawSpectrum() {
 
         // nom de la bande
         ctx.fillStyle = '#fff';
-ctx.font = '12px Arial';
-ctx.textAlign = 'center';
-if(this.modeSelect.value === '31'){
-    const value = band.name; // la valeur de la bande (ex: 1000)
-    if(band.low >= 1000 || band.high >= 1000){
-        ctx.fillText((band.low/1000).toFixed(1).replace(/\.0$/,'')+'-'+(band.high/1000).toFixed(1).replace(/\.0$/,'') , (x1 + x2)/2, 20);
-        ctx.fillText('kHz', (x1 + x2)/2, 35);
-    } else {
-        ctx.fillText(`${band.low}-${band.high}`, (x1 + x2)/2, 20);
-        ctx.fillText('Hz', (x1 + x2)/2, 35);
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+
+        if(this.modeSelect.value === '31'){
+        const centerFreq = (band.low + band.high)/2;
+        let label, unitY;
+        if(centerFreq >= 1000){
+        label = (centerFreq/1000).toFixed(1).replace(/\.0$/,'');
+        unitY = 'kHz';
+        } else {
+        label = Math.round(centerFreq);
+        unitY = 'Hz';
     }
+    ctx.fillText(label, (x1 + x2)/2, 20);       // fréquence centrale
+    ctx.fillText(unitY, (x1 + x2)/2, 35);      // unité
 } else {
-    ctx.fillText(`${band.name}`, (x1 + x2) / 2, 20);
+    ctx.fillText(`${band.name}`, (x1 + x2)/2, 20);
 }
 
         // valeurs low-high formatées pour 7 bandes et 9 premières bandes de 10 bandes
