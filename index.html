@@ -155,7 +155,6 @@ function formatFreqLabel(freq) {
 
     bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
-    this.noiseSelect.addEventListener("change", ()=>this.selectNoise());
     this.playBtn.addEventListener("click", ()=>this.togglePlay());
     this.loopBtn.addEventListener("click", ()=>this.toggleLoop());
     this.resetBtn.addEventListener("click", ()=>this.resetBand());
@@ -256,7 +255,8 @@ function formatFreqLabel(freq) {
   }
 
     toggleNoise(type){
-  if(type === "white"){
+ this.initAudio();
+ if(type === "white"){
     if(this.whiteNoiseBtn.classList.contains("active")){
       // désactivation
       this.whiteNoiseBtn.classList.remove("active");
