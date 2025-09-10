@@ -132,8 +132,21 @@ function formatFreqLabel(freq) {
 
 class AudioApp {
   constructor(){
+    
+    // audio
     this.audioContext = new (window.AudioContext||window.webkitAudioContext)();
-    this.initAudio();
+    this.analyser = null;
+    this.gainNode = null;
+    this.filterNode = null;
+    this.buffer = null;
+    this.loadedBuffer = null;
+    this.isPlaying = false;
+    this.isLooping = true;
+    this.startTime = 0;
+    this.pauseTime = 0;
+
+    this.initAudio(); // 🔹 initialise gainNode et analyser immédiatement
+    
     // DOM
     this.fileInput = document.getElementById("fileInput");
     this.playBtn = document.getElementById("playBtn");
@@ -160,18 +173,6 @@ class AudioApp {
 
     this.whiteNoiseBtn.addEventListener("click", ()=>this.toggleNoise("white"));
     this.pinkNoiseBtn.addEventListener("click", ()=>this.toggleNoise("pink"));
-
-    // audio
-    this.source = null;
-    this.analyser = null;
-    this.gainNode = null;
-    this.filterNode = null;
-    this.buffer = null;
-    this.loadedBuffer = null;
-    this.isPlaying = false;
-    this.isLooping = true;
-    this.startTime = 0;
-    this.pauseTime = 0;
 
     // quiz
     this.currentBand = null;
