@@ -284,35 +284,6 @@ function formatFreqLabel(freq) {
   this.play();
 }
 
-  selectNoise(){
-  // crée ou initialise la chaîne audio (gainNode + analyser) si nécessaire
-  if(!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  this.initAudio();
-
-  const val = this.noiseSelect.value;
-  if(val === "white") {
-    this.buffer = this.generateWhiteNoise(10);
-  } else if(val === "pink") {
-    this.buffer = this.generatePinkNoise(10);
-  } else {
-    // Restaurer la piste chargée si elle existe, sinon ne rien jouer
-    if(this.loadedBuffer){
-      this.buffer = this.loadedBuffer;
-    } else {
-      // Pas de fichier chargé — coupe le son et retourne
-      this.buffer = null;
-      if(this.source){
-        try{ this.source.stop(); }catch(e){}
-        this.isPlaying = false;
-      }
-      return;
-    }
-  }
-
-  this.pauseTime = 0;
-  this.play();
-}
-
   generateWhiteNoise(duration=5){
     const sampleRate = this.audioContext.sampleRate;
     const buffer = this.audioContext.createBuffer(1, sampleRate*duration, sampleRate);
