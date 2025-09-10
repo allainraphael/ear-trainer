@@ -429,8 +429,8 @@ drawSpectrum() {
         ctx.textAlign = 'center';
         ctx.fillText(`${band.name}`, (x1 + x2) / 2, 20);
 
-        // valeurs low-high pour 7 et 10 bandes
-       if (this.modeSelect.value === '7' || this.modeSelect.value === '10') {
+        // valeurs low-high formatées pour 7 bandes et 9 premières bandes de 10 bandes
+if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 'b10')) {
     const lowLabel = formatFreqLabel(band.low);
     const highLabel = formatFreqLabel(band.high);
     ctx.fillText(`${lowLabel} - ${highLabel}`, (x1 + x2) / 2, 35);
