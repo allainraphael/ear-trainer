@@ -480,9 +480,20 @@ drawSpectrum() {
 
         // nom de la bande
         ctx.fillStyle = '#fff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${band.name}`, (x1 + x2) / 2, 20);
+ctx.font = '12px Arial';
+ctx.textAlign = 'center';
+if(this.modeSelect.value === '31'){
+    const value = band.name; // la valeur de la bande (ex: 1000)
+    if(band.low >= 1000 || band.high >= 1000){
+        ctx.fillText((band.low/1000).toFixed(1).replace(/\.0$/,'')+'-'+(band.high/1000).toFixed(1).replace(/\.0$/,'') , (x1 + x2)/2, 20);
+        ctx.fillText('kHz', (x1 + x2)/2, 35);
+    } else {
+        ctx.fillText(`${band.low}-${band.high}`, (x1 + x2)/2, 20);
+        ctx.fillText('Hz', (x1 + x2)/2, 35);
+    }
+} else {
+    ctx.fillText(`${band.name}`, (x1 + x2) / 2, 20);
+}
 
         // valeurs low-high formatées pour 7 bandes et 9 premières bandes de 10 bandes
 if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 'b10')) {
