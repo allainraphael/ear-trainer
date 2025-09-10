@@ -133,6 +133,7 @@ function formatFreqLabel(freq) {
 class AudioApp {
   constructor(){
     this.audioContext = new (window.AudioContext||window.webkitAudioContext)();
+    this.initAudio();
     // DOM
     this.fileInput = document.getElementById("fileInput");
     this.playBtn = document.getElementById("playBtn");
