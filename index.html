@@ -376,15 +376,16 @@ play(filteredBand=null) {
 
         // clignotement
         if(this.highlightBand === key){
-  // Bande cliquée → affichée en opaque avec sa propre couleur
-  const band = this.frequencyBands[key];
-  ctx.fillStyle = band.color.replace(/[\d.]+\)$/,'1)'); // force alpha = 1
-  ctx.fillRect(x1, 0, x2 - x1, height);
-} else {
-  // Autres bandes → affichées normalement (ex: 0.5 de transparence)
-  const band = this.frequencyBands[key];
-  ctx.fillStyle = band.color; 
-  ctx.fillRect(x1, 0, x2 - x1, height);
+  
+        // Bande cliquée → affichée en opaque avec sa propre couleur
+        const band = this.frequencyBands[key];
+        ctx.fillStyle = band.color.replace(/[\d.]+\)$/,'1)'); // force alpha = 1
+        ctx.fillRect(x1, 0, x2 - x1, height);
+      } else {
+        // Autres bandes → affichées normalement (ex: 0.5 de transparence)
+        const band = this.frequencyBands[key];
+        ctx.fillStyle = band.color; 
+        ctx.fillRect(x1, 0, x2 - x1, height);
 }
 
 
