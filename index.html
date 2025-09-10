@@ -211,8 +211,13 @@ class AudioApp {
       this.whiteNoiseBtn.classList.remove("active");
       this.buffer = this.loadedBuffer; // revenir au son chargé
       this.pauseTime = 0;
-      if(!this.buffer) this.stop(); // si pas de fichier chargé, arrêter le son
-      else this.play();
+      // stopper le son
+      if(this.source){
+        try{ this.source.stop(); } catch(e){}
+        this.source.disconnect();
+        this.source = null;
+        this.isPlaying = false;
+      }
     } else {
       // activation bruit blanc
       this.whiteNoiseBtn.classList.add("active");
@@ -227,18 +232,23 @@ class AudioApp {
       this.pinkNoiseBtn.classList.remove("active");
       this.buffer = this.loadedBuffer; // revenir au son chargé
       this.pauseTime = 0;
-      if(!this.buffer) this.stop();
-      else this.play();
+      if(this.source){
+        try{ this.source.stop(); } catch(e){}
+        this.source.disconnect();
+        this.source = null;
+        this.isPlaying = false;
+      }
     } else {
       // activation bruit rose
       this.pinkNoiseBtn.classList.add("active");
-      this.whiteNoiseBtn.classList.remove("active");
+      this.whiteNoiseBtn.classList.remove("active"); 
       this.buffer = this.generatePinkNoise(10);
       this.pauseTime = 0;
       this.play();
     }
   }
 }
+
 
   generateWhiteNoise(duration=5){
     const sr=this.audioContext.sampleRate;
