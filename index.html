@@ -279,6 +279,7 @@ class AudioApp {
     this.initAudio();
     this.pauseTime=0;
     this.play();
+    this.playBtn.classList.add("active"); // bouton Play devient vert
   }
 
   toggleNoise(type){
@@ -300,6 +301,7 @@ class AudioApp {
         this.pinkNoiseBtn.classList.remove("active");
         this.buffer = this.generateWhiteNoise(10);
         this.play();
+        this.playBtn.classList.add("active"); // bouton Play devient vert
       }
     } else if(type === "pink"){
       if(pinkActive){
@@ -311,6 +313,7 @@ class AudioApp {
         this.whiteNoiseBtn.classList.remove("active");
         this.buffer = this.generatePinkNoise(10);
         this.play();
+        this.playBtn.classList.add("active"); // bouton Play devient vert
       }
     }
   }
