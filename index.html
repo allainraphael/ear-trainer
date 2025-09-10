@@ -377,13 +377,17 @@ class AudioApp {
     if(!this.buffer) return;
     if(this.audioContext.state==="suspended") this.audioContext.resume();
 
-    // stopper l'ancienne source correspondante
+    // STOP des sources existantes
     if(isQuiz){
         if(this.quizSource){ try{ this.quizSource.stop(); } catch(e){} }
-        this.quizSource=null;
+        this.quizSource = null;
+        if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
+        this.isPlaying = false;
+        this.animationId && cancelAnimationFrame(this.animationId);
+        this.animationId = null;
     } else {
         if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} }
-        this.mainSource=null;
+        this.mainSource = null;
     }
 
     const source = this.audioContext.createBufferSource();
@@ -391,7 +395,6 @@ class AudioApp {
     source.loop=this.isLooping;
 
     if(filteredBand){
-        // flux filtré pour bande sélectionnée (quiz ou clic)
         const band = this.frequencyBands[filteredBand];
         const filter = this.audioContext.createBiquadFilter();
         filter.type="bandpass";
@@ -401,11 +404,11 @@ class AudioApp {
         filter.connect(this.gainNode);
         this.filterNode = filter;
     } else {
-        // flux complet (spectrogramme complet)
         source.connect(this.gainNode);
     }
 
     source.start(0, this.pauseTime);
+
     if(isQuiz){
         this.quizSource = source;
     } else {
@@ -680,10 +683,9 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
     // --- Éteindre la bande et stopper le son ---
     this.highlightBand = null;
     this.currentBand = null;
-    if(this.source){
-        try { 
-            this.source.stop(); 
-        } catch(e){}
+    if(this.quizSource){
+    try { this.quizSource.stop(); } catch(e){}
+    this.quizSource = null;
         this.animationId && cancelAnimationFrame(this.animationId);
         this.animationId = null;
     }
@@ -695,20 +697,39 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
 }
 
   quitQuiz(){
-    this.quizActive=false;
-    this.modeQuestion=false;
-    this.modeReponse=false;
-    this.highlightBand=null;
-    this.quizMessage.textContent="";
-    this.progressContainer.style.display="none";
-    this.replayBtn.style.display="none";
-    this.newQuizBtn.style.display="none";
-    this.quitQuizBtn.style.display="none";
-    this.resultsTable.style.display="none";
-    this.currentBand=null;
-    if(this.isPlaying) this.play();
-  }
+    this.quizActive = false;
+    this.quizMessage.textContent = "Quiz quitté.";
+    this.progressBar.style.width = "0%";
+
+    // Masquer les boutons liés au quiz
+    this.replayBtn.style.display = "none";
+    this.newQuizBtn.style.display = "none";
+    this.quitQuizBtn.style.display = "none";
+
+    // --- Éteindre la bande ---
+    this.highlightBand = null;
+    this.currentBand = null;
+
+    // --- Stopper la source quiz ---
+    if(this.quizSource){
+        try {
+            this.quizSource.stop();
+        } catch(e){}
+        this.quizSource = null;
+    }
+
+    // --- Annuler l’animation ---
+    if(this.animationId){
+        cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+    }
+
+    // --- Réinitialiser le bouton Play ---
+    this.isPlaying = false;
+    this.playBtn.classList.remove("active");
+    this.playBtn.textContent = "▶️";
 }
+
 
 const app = new AudioApp();
 </script>
