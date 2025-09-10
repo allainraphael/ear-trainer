@@ -274,6 +274,9 @@ class AudioApp {
 }
 
   async loadFile(e){
+    if (this.audioContext.state === 'suspended') {
+    await this.audioContext.resume();
+}
     const file=e.target.files[0];
     if(!file) return;
     if(!this.audioContext) this.audioContext=new (window.AudioContext||window.webkitAudioContext)();
@@ -443,6 +446,9 @@ toggleLoop() {
   // 🔹 Toggle bruit blanc / rose
 toggleNoise(type){
     this.initAudio();
+  if (this.audioContext.state === 'suspended') {
+    await this.audioContext.resume();
+}
 
     // Arrêter mainSource mais garder quizSource si quiz actif
     if (!this.quizActive) this.stopSource('mainSource');
