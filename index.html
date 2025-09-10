@@ -355,10 +355,9 @@ stopSource(type) {
     return buffer;
   }
 
-  // 🔹 Création et lecture d'une source audio
-createSource({ buffer, loop = false, filteredBand = null, isQuiz = false }) {
+ // 🔹 Création et lecture d'une source audio
+createSource({ buffer, loop = false, filteredBand = null, isQuiz = false, spectroFiltered = true }) {
     if (!buffer) return null;
-
     const sourceKey = isQuiz ? 'quizSource' : 'mainSource';
 
     // Stop de l'ancienne source
@@ -368,37 +367,42 @@ createSource({ buffer, loop = false, filteredBand = null, isQuiz = false }) {
         this[sourceKey] = null;
     }
 
-    // Nouvelle source
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
     source.loop = loop;
 
     let finalNode = this.gainNode;
+    let filter = null;
 
-    // Filtrage optionnel
     if (filteredBand) {
         const band = this.frequencyBands[filteredBand];
-        const filter = this.audioContext.createBiquadFilter();
+        filter = this.audioContext.createBiquadFilter();
         filter.type = 'bandpass';
         filter.frequency.value = Math.sqrt(band.low * band.high);
         filter.Q.value = filter.frequency.value / (band.high - band.low);
         source.connect(filter);
         filter.connect(finalNode);
-        if(!isQuiz) this.filterNode = filter; // pour mainSource
+
+        if(!isQuiz) this.filterNode = filter;
     } else {
         source.connect(finalNode);
     }
 
     this[sourceKey] = source;
-
-    const offset = isQuiz ? 0 : this.pauseTime;
-    source.start(0, offset);
+    source.start(0, isQuiz ? 0 : this.pauseTime);
 
     if(!isQuiz) {
         this.isPlaying = true;
         this.startTime = this.audioContext.currentTime - this.pauseTime;
         if(!this.animationId) this.animate();
         this.updatePlayButton(true);
+    }
+
+    // Pour le spectrogramme : choisir si on analyse la source filtrée ou non
+    if(isQuiz) {
+        this.spectroSource = spectroFiltered ? filter || source : buffer; 
+    } else {
+        this.spectroSource = filter || source;
     }
 
     return source;
@@ -411,49 +415,6 @@ play(filteredBand = null) {
 
     this.createSource({ buffer: this.buffer, loop: this.isLooping, filteredBand, isQuiz: false });
 }
-
-  toggleNoise(type){
-    this.initAudio();
-
-    // Arrêter uniquement mainSource
-    this.stopSource('mainSource');
-    this.pauseTime = 0; 
-
-    if(type === 'white'){
-        const isActive = this.whiteNoiseBtn.classList.contains('active');
-        this.whiteNoiseBtn.classList.toggle('active', !isActive);
-        this.pinkNoiseBtn.classList.remove('active');
-
-        if(!isActive){
-            const buffer = this.generateWhiteNoise(10);
-            this.createSource({buffer, loop: true, isQuiz: false});
-            this.updatePlayButton(true);
-        } else if(this.loadedBuffer){
-            this.createSource({buffer: this.loadedBuffer, loop: this.isLooping});
-            this.updatePlayButton(true);
-        } else {
-            this.updatePlayButton(false);
-        }
-    }
-
-    if(type === 'pink'){
-        const isActive = this.pinkNoiseBtn.classList.contains('active');
-        this.pinkNoiseBtn.classList.toggle('active', !isActive);
-        this.whiteNoiseBtn.classList.remove('active');
-
-        if(!isActive){
-            const buffer = this.generatePinkNoise(10);
-            this.createSource({buffer, loop: true, isQuiz: false});
-            this.updatePlayButton(true);
-        } else if(this.loadedBuffer){
-            this.createSource({buffer: this.loadedBuffer, loop: this.isLooping});
-            this.updatePlayButton(true);
-        } else {
-            this.updatePlayButton(false);
-        }
-    }
-}
-
 
   // 🔹 Toggle lecture/pauses mainSource
 togglePlay() {
@@ -473,35 +434,41 @@ toggleLoop() {
 }
 
   // 🔹 Toggle bruit blanc / rose
-toggleNoise(type) {
+toggleNoise(type){
     this.initAudio();
     this.stopSource('mainSource');
+    this.stopSource('quizSource');
     this.pauseTime = 0;
 
-    if(type === 'white'){
-        const isActive = this.whiteNoiseBtn.classList.contains('active');
-        this.whiteNoiseBtn.classList.toggle('active', !isActive);
-        this.pinkNoiseBtn.classList.remove('active');
+    let buffer;
+    if(type === 'white') buffer = this.generateWhiteNoise(10);
+    if(type === 'pink') buffer = this.generatePinkNoise(10);
 
-        if(!isActive){
-            const buffer = this.generateWhiteNoise(10);
-            this.createSource({buffer, loop:true});
-        } else if(this.loadedBuffer) {
-            this.createSource({buffer: this.loadedBuffer, loop:this.isLooping});
-        }
-    }
+    const isActiveWhite = this.whiteNoiseBtn.classList.contains('active');
+    const isActivePink = this.pinkNoiseBtn.classList.contains('active');
 
-    if(type === 'pink'){
-        const isActive = this.pinkNoiseBtn.classList.contains('active');
-        this.pinkNoiseBtn.classList.toggle('active', !isActive);
-        this.whiteNoiseBtn.classList.remove('active');
+    this.whiteNoiseBtn.classList.toggle('active', type === 'white' ? !isActiveWhite : false);
+    this.pinkNoiseBtn.classList.toggle('active', type === 'pink' ? !isActivePink : false);
 
-        if(!isActive){
-            const buffer = this.generatePinkNoise(10);
-            this.createSource({buffer, loop:true});
-        } else if(this.loadedBuffer) {
-            this.createSource({buffer: this.loadedBuffer, loop:this.isLooping});
-        }
+    // Déterminer si on est en quiz
+    if(this.quizActive) {
+        // Quiz : utiliser quizSource
+        this.createSource({
+            buffer,
+            loop: true,
+            filteredBand: this.quizBand || null, // si une bande est sélectionnée pour quiz
+            isQuiz: true,
+            spectroFiltered: !this.modeQuestion // spectrogramme filtré uniquement après la bonne réponse
+        });
+    } else {
+        // Mode libre : mainSource filtrée et spectrogramme filtré
+        this.createSource({
+            buffer,
+            loop: true,
+            filteredBand: this.currentBand || null,
+            isQuiz: false
+        });
+        this.updatePlayButton(true);
     }
 }
 
@@ -672,34 +639,47 @@ if (this.modeSelect.value === '7' || (this.modeSelect.value === '10' && key !== 
     this.nextQuiz();
   }
 
-  nextQuiz(){
+  nextQuiz() {
     const keys = Object.keys(this.frequencyBands);
     let newBand;
-
-    // éviter de répéter la même bande que la précédente
-    do {
-        newBand = keys[Math.floor(Math.random() * keys.length)];
-    } while(newBand === this.quizBand && keys.length > 1);
+    do { newBand = keys[Math.floor(Math.random() * keys.length)]; }
+    while(newBand === this.quizBand && keys.length > 1);
 
     this.quizBand = newBand;
     this.currentBand = null;
     this.modeQuestion = true;
-    this.play(this.quizBand, true); // flux filtré quiz
+
+    // Flux filtré audible mais spectrogramme non filtré
+    this.createSource({
+        buffer: this.buffer,
+        loop: false,
+        filteredBand: this.quizBand,
+        isQuiz: true,
+        spectroFiltered: false // spectrogramme non filtré
+    });
+
     this.quizCount++;
     this.progressBar.style.width = ((this.quizCount - 1) / this.totalQuestions * 100) + "%";
 }
   
-  checkQuizAnswer(selectedKey){
-  const correct = selectedKey === this.quizBand;
-  this.currentBand = this.quizBand; // bande toujours allumée en dessous
-  this.modeQuestion = false;
+  checkQuizAnswer(selectedKey) {
+    const correct = selectedKey === this.quizBand;
+    this.currentBand = this.quizBand;
+    this.modeQuestion = false;
 
-  if(correct){ 
-    this.quizScore++; 
-    this.quizMessage.textContent = "✅ Correct !"; 
-  } else { 
-    this.quizMessage.textContent = `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; 
-  }
+    // Recréer la source filtrée pour que le spectrogramme l'affiche
+    this.createSource({
+        buffer: this.buffer,
+        loop: false,
+        filteredBand: this.quizBand,
+        isQuiz: true,
+        spectroFiltered: true // maintenant le spectrogramme affiche le signal filtré
+    });
+
+    if(correct) this.quizScore++;
+    this.quizMessage.textContent = correct 
+        ? "✅ Correct !" 
+        : `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`;
 
   // ajouter ligne tableau
   const tr = document.createElement("tr");
