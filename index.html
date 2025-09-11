@@ -88,6 +88,7 @@ button.active { background:#4facfe; color:white; }
     <select id="modeSelect">
       <option value="7" selected>7 bandes</option>
       <option value="10">10 bandes</option>
+      <option value="11">11 bandes voix</option>
       <option value="15">15 bandes</option>
       <option value="31">31 bandes</option>
     </select>
@@ -233,6 +234,21 @@ class AudioApp {
       b10: { low: 16744, high: 20000, color: 'rgba(128,128,255,0.5)', name: 'Oct10' }
     };
   } 
+  else if (mode === '11') {
+  this.frequencyBands = {
+    b1:  { low: 20,   high: 100,   color: 'rgba(255,0,0,0.5)',     name: 'Bruits' },
+    b2:  { low: 100,  high: 180,   color: 'rgba(255,165,0,0.5)',   name: 'Effet de proximité / pièce' },
+    b3:  { low: 180,  high: 300,   color: 'rgba(255,255,0,0.5)',   name: 'Voix étouffée' },
+    b4:  { low: 300,  high: 600,   color: 'rgba(0,255,0,0.5)',     name: 'Voix nasillarde' },
+    b5:  { low: 600,  high: 1200,  color: 'rgba(0,255,255,0.5)',   name: '' },
+    b6:  { low: 1200, high: 2000,  color: 'rgba(0,0,255,0.5)',     name: 'Présence' },
+    b7:  { low: 2000, high: 4000,  color: 'rgba(255,0,255,0.5)',   name: 'Agressivité' },
+    b8:  { low: 4000, high: 6000,  color: 'rgba(255,128,128,0.5)', name: 'Aigus' },
+    b9:  { low: 6000, high: 9000,  color: 'rgba(128,255,128,0.5)', name: 'Sifflantes' },
+    b10: { low: 9000, high: 12000, color: 'rgba(128,128,255,0.5)', name: 'Brillance' },
+    b11: { low: 12000, high: 20000,color: 'rgba(200,200,200,0.5)', name: 'Air' }
+  };
+}
   else if (mode === '15') {
     const freqs = [25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000];
     this.frequencyBands = {};
