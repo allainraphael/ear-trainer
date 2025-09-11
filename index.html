@@ -528,7 +528,7 @@ drawSpectrum() {
             }
 
             // valeurs low-high (on décale vers le bas si le nom a plusieurs lignes)
-            if (this.modeSelect.value === '7' || this.modeSelect.value === '11' || (this.modeSelect.value === '10' && key !== 'b10')) {
+            if (this.modeSelect.value === '7' || this.modeSelect.value === '11' && key !== 'b10' || (this.modeSelect.value === '10' && key !== 'b10')) {
             const lowLabel = formatFreqLabel(band.low);
             const highLabel = formatFreqLabel(band.high);
             const lowHighY = 35 + Math.max(0, (nameLines.length - 1) * lineHeight);
