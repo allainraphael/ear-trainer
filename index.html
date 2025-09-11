@@ -82,7 +82,8 @@ button.active { background:#4facfe; color:white; }
     </div>
     <input type="file" id="fileInput" accept="audio/*"><br>
     <button id="playBtn">▶️ Play/Pause</button>
-    <button id="loopBtn" class="active">🔁 Boucle ON</button>
+    <button id="loopBtn" class="active">🔁 Boucle ON</button> <br>
+    <label>Volume : <input type="range" id="volume" min="0" max="2" value="1" step="0.01"></label>
   </fieldset>
 
   <fieldset id="analyserFrame">
@@ -94,11 +95,8 @@ button.active { background:#4facfe; color:white; }
       <option value="15">15 bandes</option>
       <option value="31">31 bandes</option>
     </select>
-    <br>
     <button id="resetBtn">♻️ Reset bande</button>
     <button id="quizBtn">🎯 Quiz</button>
-    <br>
-    <label>Volume : <input type="range" id="volume" min="0" max="2" value="1" step="0.01"></label>
   </fieldset>
 </div>
 
