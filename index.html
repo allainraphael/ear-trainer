@@ -689,12 +689,11 @@ startQuizSeries() {
     this.nextQuiz();
 }
 
-// Lecture d'une question de quiz (son filtré max 5s)
+// Lecture d'une question filtrée
 playQuiz(filteredBand) {
     if (!this.buffer || !filteredBand) return;
     if (this.audioContext.state === "suspended") this.audioContext.resume();
 
-    // Stop ancienne source si besoin
     if (this.quizSource) { 
         try { this.quizSource.stop(); } catch(e) {} 
         this.quizSource = null; 
@@ -708,7 +707,6 @@ playQuiz(filteredBand) {
     source.buffer = this.buffer;
     source.loop = false;
 
-    // Filtre sur la bande choisie
     const band = this.frequencyBands[filteredBand];
     const filter = this.audioContext.createBiquadFilter();
     filter.type = "bandpass";
@@ -721,7 +719,6 @@ playQuiz(filteredBand) {
 
     source.start();
 
-    // Arrêt automatique du son au bout de 5s
     this.quizTimer = setTimeout(() => {
         try { source.stop(); } catch(e) {}
         this.quizSource = null;
@@ -735,12 +732,10 @@ nextQuiz() {
 
     const keys = Object.keys(this.frequencyBands);
     let newBand;
-
     do {
         newBand = keys[Math.floor(Math.random() * keys.length)];
     } while (newBand === this.quizBand && keys.length > 1);
 
-    // Stop source précédente
     if (this.quizSource) {
         try { this.quizSource.stop(); } catch(e) {}
         this.quizSource = null;
@@ -751,13 +746,13 @@ nextQuiz() {
     this.modeQuestion = true;
     this.modeReponse = false;
 
-    // Jouer le son filtré
     this.playQuiz(this.quizBand);
 
     this.quizCount++;
     this.progressBar.style.width = ((this.quizCount - 1) / this.totalQuestions * 100) + "%";
 }
 
+// Vérification de la réponse
 checkQuizAnswer(selectedKey) {
     if (!this.quizActive || !this.modeQuestion) return;
 
@@ -768,17 +763,16 @@ checkQuizAnswer(selectedKey) {
     this.modeQuestion = false;
     this.modeReponse = true;
 
-    // Message résultat
+    // Message résultat visible immédiatement
     this.quizMessage.textContent = correct
         ? "✅ Correct !"
         : `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`;
 
-    // Ajouter ligne tableau
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct ? 'correct' : 'incorrect'}">${correct ? '✓' : '✗'}</td>`;
     this.resultsBody.appendChild(tr);
 
-    // Clignotement
+    // Clignotement avec affichage réponse
     const totalTime = 1500;
     const blinks = 6;
     const startTime = performance.now();
@@ -790,17 +784,11 @@ checkQuizAnswer(selectedKey) {
             this.highlightBandOpacity = 0.8;
             this.highlightBand = null;
 
-            // Stop du son
-            if (this.quizSource) {
-                try { this.quizSource.stop(); } catch(e) {}
-                this.quizSource = null;
-            }
-            if (this.quizTimer) {
-                clearTimeout(this.quizTimer);
-                this.quizTimer = null;
-            }
+            // Stop son
+            if (this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource=null; }
+            if (this.quizTimer) { clearTimeout(this.quizTimer); this.quizTimer=null; }
 
-            // Passage à la question suivante ou fin du quiz
+            // Question suivante ou fin du quiz
             if (this.quizCount < this.totalQuestions) {
                 setTimeout(() => this.nextQuiz(), 500);
             } else {
@@ -823,14 +811,8 @@ endQuiz() {
     this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
     this.quizActive = false;
 
-    if (this.quizSource) {
-        try { this.quizSource.stop(); } catch(e) {}
-        this.quizSource = null;
-    }
-    if (this.quizTimer) {
-        clearTimeout(this.quizTimer);
-        this.quizTimer = null;
-    }
+    if (this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource=null; }
+    if (this.quizTimer) { clearTimeout(this.quizTimer); this.quizTimer=null; }
 
     this.playBtn.classList.remove("active");
     this.highlightBand = null;
@@ -840,29 +822,24 @@ endQuiz() {
 
 // Quitter le quiz
 quitQuiz() {
-    this.quizActive = false;
-    this.modeQuestion = false;
-    this.modeReponse = false;
-    this.highlightBand = null;
-    this.quizMessage.textContent = "";
-    this.progressContainer.style.display = "none";
-    this.replayBtn.style.display = "none";
-    this.newQuizBtn.style.display = "none";
-    this.quitQuizBtn.style.display = "none";
-    this.resultsTable.style.display = "none";
-    this.currentBand = null;
+    this.quizActive=false;
+    this.modeQuestion=false;
+    this.modeReponse=false;
+    this.highlightBand=null;
+    this.quizMessage.textContent="";
+    this.progressContainer.style.display="none";
+    this.replayBtn.style.display="none";
+    this.newQuizBtn.style.display="none";
+    this.quitQuizBtn.style.display="none";
+    this.resultsTable.style.display="none";
+    this.currentBand=null;
 
-    if (this.quizSource) {
-        try { this.quizSource.stop(); } catch(e) {}
-        this.quizSource = null;
-    }
-    if (this.quizTimer) {
-        clearTimeout(this.quizTimer);
-        this.quizTimer = null;
-    }
+    if (this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource=null; }
+    if (this.quizTimer) { clearTimeout(this.quizTimer); this.quizTimer=null; }
 
     if (this.isPlaying) this.play();
 }
+
 
 const app = new AudioApp();
 </script>
