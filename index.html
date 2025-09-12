@@ -491,6 +491,35 @@ play(filteredBand = null) {
     source.start(0, this.pauseTime);
 }
 
+// === Lecture quiz (son filtré mais silencieux) ===
+playQuiz(filteredBand) {
+    if (!this.buffer || !filteredBand) return;
+    if (this.audioContext.state === "suspended") this.audioContext.resume();
+
+    // STOP quizSource précédent si actif
+    if (this.quizSource) { 
+        try { this.quizSource.stop(); } catch(e) {} 
+        this.quizSource = null; 
+    }
+
+    const source = this.audioContext.createBufferSource();
+    source.buffer = this.buffer;
+    source.loop = false; // quiz = non looping
+
+    // Filtre pour bande quiz
+    const band = this.frequencyBands[filteredBand];
+    const filter = this.audioContext.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = Math.sqrt(band.low * band.high);
+    filter.Q.value = filter.frequency.value / (band.high - band.low);
+
+    source.connect(filter);
+    filter.connect(this.analyser); // uniquement pour spectrogramme
+    this.quizSource = source;
+
+    source.start();
+}
+
   togglePlay(){
     if(!this.isPlaying) {
         this.play();
@@ -666,162 +695,117 @@ drawSpectrum() {
     }
 }
 
- // ===== QUIZ =====
-startQuizSeries() {
-    if (!this.buffer) { 
-        alert("Charge un son avant !"); 
-        return; 
-    }
-
-    this.quizScore = 0;
-    this.quizCount = 0;
-    this.resultsBody.innerHTML = "";
-    this.resultsTable.style.display = "table";
-    this.progressContainer.style.display = "block";
-    this.quizActive = true;
-    this.quizMessage.textContent = "Quiz en cours...";
-
-    // Afficher les boutons
+  // ===== QUIZ =====
+  startQuizSeries(){
+    if(!this.buffer) { alert("Charge un son avant !"); return; }
+    this.quizScore=0;
+    this.quizCount=0;
+    this.resultsBody.innerHTML="";
+    this.resultsTable.style.display="table";
+    this.progressContainer.style.display="block";
+    this.quizActive=true;
+    this.quizMessage.textContent="Quiz en cours...";
+    // --- AFFICHER LES BOUTONS DÈS LE DÉBUT ---
     this.replayBtn.style.setProperty('display', 'inline-block', 'important');
     this.newQuizBtn.style.setProperty('display', 'inline-block', 'important');
     this.quitQuizBtn.style.setProperty('display', 'inline-block', 'important');
-
     this.nextQuiz();
-}
+  }
 
-// Lecture d'une question filtrée
-playQuiz(filteredBand) {
-    if (!this.buffer || !filteredBand) return;
-    if (this.audioContext.state === "suspended") this.audioContext.resume();
-
-    if (this.quizSource) { 
-        try { this.quizSource.stop(); } catch(e) {} 
-        this.quizSource = null; 
-    }
-    if (this.quizTimer) {
-        clearTimeout(this.quizTimer);
-        this.quizTimer = null;
-    }
-
-    const source = this.audioContext.createBufferSource();
-    source.buffer = this.buffer;
-    source.loop = false;
-
-    const band = this.frequencyBands[filteredBand];
-    const filter = this.audioContext.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.value = Math.sqrt(band.low * band.high);
-    filter.Q.value = filter.frequency.value / (band.high - band.low);
-
-    source.connect(filter);
-    filter.connect(this.gainNode);
-    this.quizSource = source;
-
-    source.start();
-
-    this.quizTimer = setTimeout(() => {
-        try { source.stop(); } catch(e) {}
-        this.quizSource = null;
-        this.quizTimer = null;
-    }, 5000);
-}
-
-// Passage à la question suivante
+  // === Passage à la question suivante dans le quiz ===
 nextQuiz() {
-    if (!this.quizActive) return;
-
     const keys = Object.keys(this.frequencyBands);
     let newBand;
+
     do {
         newBand = keys[Math.floor(Math.random() * keys.length)];
-    } while (newBand === this.quizBand && keys.length > 1);
-
-    if (this.quizSource) {
-        try { this.quizSource.stop(); } catch(e) {}
-        this.quizSource = null;
-    }
+    } while(newBand === this.quizBand && keys.length > 1);
 
     this.quizBand = newBand;
     this.currentBand = null;
     this.modeQuestion = true;
-    this.modeReponse = false;
 
+    // --- Jouer le son filtré uniquement pour spectrogramme ---
     this.playQuiz(this.quizBand);
 
     this.quizCount++;
     this.progressBar.style.width = ((this.quizCount - 1) / this.totalQuestions * 100) + "%";
 }
-
-// Vérification de la réponse
-checkQuizAnswer(selectedKey) {
-    if (!this.quizActive || !this.modeQuestion) return;
-
+  
+  checkQuizAnswer(selectedKey) {
     const correct = selectedKey === this.quizBand;
-    if (correct) this.quizScore++;
-
-    this.currentBand = this.quizBand;
+    this.currentBand = this.quizBand; // bande toujours allumée
     this.modeQuestion = false;
-    this.modeReponse = true;
 
-    // Message résultat visible immédiatement
+    // message résultat
     this.quizMessage.textContent = correct
         ? "✅ Correct !"
         : `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`;
 
+    // ajouter ligne tableau
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct ? 'correct' : 'incorrect'}">${correct ? '✓' : '✗'}</td>`;
     this.resultsBody.appendChild(tr);
 
-    // Clignotement avec affichage réponse
-    const totalTime = 1500;
+    // clignotement
+    if(this.clignotementInterval) clearInterval(this.clignotementInterval);
+    const totalTime = 1500; // ms
     const blinks = 6;
-    const startTime = performance.now();
+    const halfCycle = totalTime / (blinks * 2);
+    let visible = false;
     this.highlightBand = this.quizBand;
+    this.highlightBandOpacity = 0.8;
 
-    const animateBlink = (now) => {
-        const elapsed = now - startTime;
-        if (elapsed >= totalTime) {
-            this.highlightBandOpacity = 0.8;
-            this.highlightBand = null;
+    this.clignotementInterval = setInterval(() => {
+        visible = !visible;
+        this.highlightBandOpacity = visible ? 0.8 : 0.2;
+    }, halfCycle);
 
-            // Stop son
-            if (this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource=null; }
-            if (this.quizTimer) { clearTimeout(this.quizTimer); this.quizTimer=null; }
+    // reveal bande filtrée après clignotement
+    setTimeout(() => {
+        clearInterval(this.clignotementInterval);
+        this.highlightBand = null;
+        this.highlightBandOpacity = 0.8;
 
-            // Question suivante ou fin du quiz
-            if (this.quizCount < this.totalQuestions) {
-                setTimeout(() => this.nextQuiz(), 500);
-            } else {
-                this.endQuiz();
-            }
-            return;
+        // stopper quizSource si actif
+        if(this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource = null; }
+
+        // --- mainSource filtré silencieux pour mise à jour spectrogramme ---
+        const oldGain = this.gainNode.gain.value;
+        this.gainNode.gain.value = 0; 
+        this.play(this.quizBand, false); // mainSource filtré mais silencieux
+        this.gainNode.gain.value = oldGain;
+
+        // passer à la question suivante ou finir le quiz
+        if(this.quizCount < this.totalQuestions) {
+            this.nextQuiz();
+        } else {
+            if(this.mainSource){ try { this.mainSource.stop(); } catch(e){} this.isPlaying = false; }
+            this.endQuiz();
         }
-
-        const phase = (elapsed / totalTime) * blinks * 2;
-        this.highlightBandOpacity = (phase % 2) < 1 ? 0.8 : 0.2;
-
-        requestAnimationFrame(animateBlink);
-    };
-
-    requestAnimationFrame(animateBlink);
+    }, totalTime);
 }
 
-// Fin du quiz
-endQuiz() {
-    this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
-    this.quizActive = false;
+  endQuiz(){
+    this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
+    this.progressBar.style.width="100%";
+    this.replayBtn.style.display="inline-block";
+    this.newQuizBtn.style.display="inline-block";
+    this.quitQuizBtn.style.display="inline-block";
+    this.quizActive=false;
 
-    if (this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource=null; }
-    if (this.quizTimer) { clearTimeout(this.quizTimer); this.quizTimer=null; }
-
-    this.playBtn.classList.remove("active");
+    // --- NOUVEAU : éteindre la bande et stopper le son ---
     this.highlightBand = null;
     this.currentBand = null;
-    if (this.animationId) { cancelAnimationFrame(this.animationId); this.animationId = null; }
+    if(this.source){
+        try { this.source.stop(); } catch(e){}
+        this.isPlaying = false;
+        this.animationId && cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+    }
 }
 
-// Quitter le quiz
-quitQuiz() {
+  quitQuiz(){
     this.quizActive=false;
     this.modeQuestion=false;
     this.modeReponse=false;
@@ -833,13 +817,9 @@ quitQuiz() {
     this.quitQuizBtn.style.display="none";
     this.resultsTable.style.display="none";
     this.currentBand=null;
-
-    if (this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource=null; }
-    if (this.quizTimer) { clearTimeout(this.quizTimer); this.quizTimer=null; }
-
-    if (this.isPlaying) this.play();
+    if(this.isPlaying) this.play();
+  }
 }
-
 
 const app = new AudioApp();
 </script>
