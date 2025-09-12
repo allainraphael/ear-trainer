@@ -795,7 +795,7 @@ nextQuiz() {
     this.quitQuizBtn.style.display = "inline-block";
     this.quizActive = false;
 
-    // --- RESET AUDIO ---
+    // --- STOP AUDIO ---
     if(this.mainSource){
         try { this.mainSource.stop(); } catch(e){}
         this.mainSource = null;
@@ -811,12 +811,15 @@ nextQuiz() {
     this.currentBand = null;
     this.modeQuestion = false;
 
-    // annuler animation et vider canvas
+    // annuler animation
     if(this.animationId){
         cancelAnimationFrame(this.animationId);
         this.animationId = null;
     }
-    this.ctx.clearRect(0, 0, this.width, this.height);
+
+    // canvas vierge
+    this.ctx.fillStyle = "#000";
+    this.ctx.fillRect(0, 0, this.width, this.height);
 
     // bouton Play redevenu inactif
     this.playBtn.classList.remove("active");
