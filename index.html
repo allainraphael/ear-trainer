@@ -787,22 +787,39 @@ nextQuiz() {
 }
 
   endQuiz(){
-    this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
-    this.progressBar.style.width="100%";
-    this.replayBtn.style.display="inline-block";
-    this.newQuizBtn.style.display="inline-block";
-    this.quitQuizBtn.style.display="inline-block";
-    this.quizActive=false;
+    // afficher le score
+    this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
+    this.progressBar.style.width = "100%";
+    this.replayBtn.style.display = "inline-block";
+    this.newQuizBtn.style.display = "inline-block";
+    this.quitQuizBtn.style.display = "inline-block";
+    this.quizActive = false;
 
-    // --- NOUVEAU : éteindre la bande et stopper le son ---
+    // --- RESET AUDIO ---
+    if(this.mainSource){
+        try { this.mainSource.stop(); } catch(e){}
+        this.mainSource = null;
+    }
+    if(this.quizSource){
+        try { this.quizSource.stop(); } catch(e){}
+        this.quizSource = null;
+    }
+    this.isPlaying = false;
+
+    // --- RESET VISUEL ---
     this.highlightBand = null;
     this.currentBand = null;
-    if(this.source){
-        try { this.source.stop(); } catch(e){}
-        this.isPlaying = false;
-        this.animationId && cancelAnimationFrame(this.animationId);
+    this.modeQuestion = false;
+
+    // annuler animation et vider canvas
+    if(this.animationId){
+        cancelAnimationFrame(this.animationId);
         this.animationId = null;
     }
+    this.ctx.clearRect(0, 0, this.width, this.height);
+
+    // bouton Play redevenu inactif
+    this.playBtn.classList.remove("active");
 }
 
   quitQuiz(){
