@@ -787,40 +787,25 @@ nextQuiz() {
 
     requestAnimationFrame(animateBlink);
 }
-endQuiz() {
-    this.quizMessage.textContent = `Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
-    this.progressBar.style.width = "100%";
-    this.replayBtn.style.display = "inline-block";
-    this.newQuizBtn.style.display = "inline-block";
-    this.quitQuizBtn.style.display = "inline-block";
-    this.quizActive = false;
 
-    // arrêter tout son
-    if(this.mainSource){ try { this.mainSource.stop(); } catch(e){} this.mainSource = null; }
-    if(this.quizSource){ try { this.quizSource.stop(); } catch(e){} this.quizSource = null; }
-    this.isPlaying = false;
+  endQuiz(){
+    this.quizMessage.textContent=`Quiz terminé ! Score : ${this.quizScore}/${this.totalQuestions}`;
+    this.progressBar.style.width="100%";
+    this.replayBtn.style.display="inline-block";
+    this.newQuizBtn.style.display="inline-block";
+    this.quitQuizBtn.style.display="inline-block";
+    this.quizActive=false;
 
-    // bouton Play repasse en inactif
-    this.playBtn.classList.remove("active");
-
-    // remettre l’état des bandes à zéro
+    // --- NOUVEAU : éteindre la bande et stopper le son ---
     this.highlightBand = null;
     this.currentBand = null;
-
-    // vider le spectrogramme
-    if(this.floatData) this.floatData.fill(-100); // valeurs très basses pour spectrogramme vide
-
-    // réinitialiser le canvas
-    if(this.ctx) {
-        this.ctx.fillStyle = '#000';
-        this.ctx.fillRect(0, 0, this.width, this.height);
-        this.drawSpectrum(); // les bandes sont affichées mais le spectrogramme est vide
+    if(this.source){
+        try { this.source.stop(); } catch(e){}
+        this.isPlaying = false;
+        this.animationId && cancelAnimationFrame(this.animationId);
+        this.animationId = null;
     }
-
-    // stopper animation si elle tournait
-    if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
 }
-
 
   quitQuiz(){
     this.quizActive=false;
