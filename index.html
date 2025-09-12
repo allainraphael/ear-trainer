@@ -721,6 +721,12 @@ nextQuiz() {
         newBand = keys[Math.floor(Math.random() * keys.length)];
     } while(newBand === this.quizBand && keys.length > 1);
 
+    // 🛑 STOP quizSource précédent avant de lancer le nouveau
+    if (this.quizSource) {
+        try { this.quizSource.stop(); } catch(e) {}
+        this.quizSource = null;
+    }
+  
     this.quizBand = newBand;
     this.currentBand = null;
     this.modeQuestion = true;
