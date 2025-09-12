@@ -807,16 +807,20 @@ endQuiz() {
     this.highlightBand = null;
     this.currentBand = null;
 
-    // réinitialiser spectrogramme (canvas vierge mais visible)
+    // vider le spectrogramme
+    if(this.floatData) this.floatData.fill(-100); // valeurs très basses pour spectrogramme vide
+
+    // réinitialiser le canvas
     if(this.ctx) {
         this.ctx.fillStyle = '#000';
         this.ctx.fillRect(0, 0, this.width, this.height);
-        this.drawSpectrum(); // dessine les bandes mais sans signal ni clignotement
+        this.drawSpectrum(); // les bandes sont affichées mais le spectrogramme est vide
     }
 
     // stopper animation si elle tournait
     if(this.animationId){ cancelAnimationFrame(this.animationId); this.animationId = null; }
 }
+
 
   quitQuiz(){
     this.quizActive=false;
