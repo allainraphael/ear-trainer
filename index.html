@@ -455,49 +455,54 @@ class AudioApp {
   }
 
   // === Lecture audio principale et quiz ===
-play(filteredBand=null, isQuiz=false){
-    if(!this.buffer) return;
-    if(this.audioContext.state === "suspended") this.audioContext.resume();
+play(filteredBand = null, isQuiz = false) {
+    if (!this.buffer) return;
+    if (this.audioContext.state === "suspended") this.audioContext.resume();
 
     // --- STOPPER les anciennes sources ---
-    if(this.mainSource){ try{ this.mainSource.stop(); } catch(e){} this.mainSource = null; }
-    if(this.quizSource && !isQuiz){ // on ne stoppe quizSource que si ce n'est pas pour quiz
-        try{ this.quizSource.stop(); } catch(e){}
-        this.quizSource = null;
+    if (!isQuiz && this.mainSource) { 
+        try { this.mainSource.stop(); } catch(e) {} 
+        this.mainSource = null; 
+    }
+    if (isQuiz && this.quizSource) { 
+        try { this.quizSource.stop(); } catch(e) {} 
+        this.quizSource = null; 
     }
 
     const source = this.audioContext.createBufferSource();
     source.buffer = this.buffer;
     source.loop = this.isLooping;
 
-    if(filteredBand){
-        // Filtrage pour bande sélectionnée (mainSource seulement)
-        const band = this.frequencyBands[filteredBand];
-        const filter = this.audioContext.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.value = Math.sqrt(band.low * band.high);
-        filter.Q.value = filter.frequency.value / (band.high - band.low);
-
-        source.connect(filter);
-        filter.connect(this.gainNode);
-        this.filterNode = filter;
-    } else {
-        // Flux complet
-        source.connect(this.gainNode);
-    }
-
-    source.start(0, this.pauseTime);
-
-    if(isQuiz){
-        // quizSource ne doit jamais être audible, mais peut alimenter le spectrogramme
+    if (isQuiz) {
+        // --- quizSource : uniquement pour spectrogramme ---
+        const analyserOnly = this.audioContext.createAnalyser();
+        analyserOnly.fftSize = this.analyser.fftSize; 
+        this.floatData = new Float32Array(analyserOnly.frequencyBinCount);
+        source.connect(analyserOnly);
+        analyserOnly.connect(this.analyser); // alimente spectrogramme
         this.quizSource = source;
     } else {
-        // mainSource : toujours audible
+        // --- mainSource : audible ---
+        if (filteredBand) {
+            // filtrage pour bande sélectionnée
+            const band = this.frequencyBands[filteredBand];
+            const filter = this.audioContext.createBiquadFilter();
+            filter.type = "bandpass";
+            filter.frequency.value = Math.sqrt(band.low * band.high);
+            filter.Q.value = filter.frequency.value / (band.high - band.low);
+            source.connect(filter);
+            filter.connect(this.gainNode);
+            this.filterNode = filter;
+        } else {
+            source.connect(this.gainNode);
+        }
         this.mainSource = source;
         this.startTime = this.audioContext.currentTime - this.pauseTime;
         this.isPlaying = true;
-        if(!this.animationId) this.animate();
+        if (!this.animationId) this.animate();
     }
+
+    source.start(0, this.pauseTime);
 }
 
   togglePlay(){
@@ -693,7 +698,7 @@ drawSpectrum() {
   }
 
   // === Passage à la question suivante dans le quiz ===
-nextQuiz(){
+nextQuiz() {
     const keys = Object.keys(this.frequencyBands);
     let newBand;
 
@@ -706,35 +711,29 @@ nextQuiz(){
     this.currentBand = null;
     this.modeQuestion = true;
 
-    // === Jouer le son filtré pour l'élève (mainSource) ===
-    this.play(this.quizBand, false);
-
-    // === Jouer le son non filtré pour le spectrogramme ===
-    this.play(null, true);
+    // --- Jouer le son filtré pour le spectrogramme uniquement (silencieux) ---
+    this.play(null, true); // quizSource alimentera le spectrogramme
 
     this.quizCount++;
     this.progressBar.style.width = ((this.quizCount - 1) / this.totalQuestions * 100) + "%";
 }
   
-  checkQuizAnswer(selectedKey){
+  checkQuizAnswer(selectedKey) {
     const correct = selectedKey === this.quizBand;
     this.currentBand = this.quizBand; // bande toujours allumée
     this.modeQuestion = false;
 
     // message résultat
-    if(correct){ 
-        this.quizScore++; 
-        this.quizMessage.textContent = "✅ Correct !"; 
-    } else { 
-        this.quizMessage.textContent = `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`; 
-    }
+    this.quizMessage.textContent = correct
+        ? "✅ Correct !"
+        : `❌ Incorrect ! C'était ${this.frequencyBands[this.quizBand].name}`;
 
     // ajouter ligne tableau
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct?'correct':'incorrect'}">${correct?'✓':'✗'}</td>`;
+    tr.innerHTML = `<td>${this.quizCount}</td><td>${this.frequencyBands[selectedKey].name}</td><td>${this.frequencyBands[this.quizBand].name}</td><td class="${correct ? 'correct' : 'incorrect'}">${correct ? '✓' : '✗'}</td>`;
     this.resultsBody.appendChild(tr);
 
-    // --- CLIGNOTEMENT rapide ---
+    // clignotement
     if(this.clignotementInterval) clearInterval(this.clignotementInterval);
     const totalTime = 1500; // ms
     const blinks = 6;
@@ -743,30 +742,30 @@ nextQuiz(){
     this.highlightBand = this.quizBand;
     this.highlightBandOpacity = 0.8;
 
-    this.clignotementInterval = setInterval(()=>{
+    this.clignotementInterval = setInterval(() => {
         visible = !visible;
         this.highlightBandOpacity = visible ? 0.8 : 0.2;
     }, halfCycle);
 
-    setTimeout(()=>{
+    // reveal bande filtrée après clignotement
+    setTimeout(() => {
         clearInterval(this.clignotementInterval);
         this.highlightBand = null;
         this.highlightBandOpacity = 0.8;
 
-        // --- REVEAL : montrer le spectrogramme filtré ---
-        // stop quizSource si actif
-        if(this.quizSource){ try { this.quizSource.stop(); } catch(e){} this.quizSource = null; }
+        // stopper quizSource si actif
+        if(this.quizSource) { try { this.quizSource.stop(); } catch(e) {} this.quizSource = null; }
 
-        // rejouer mainSource filtré silencieusement pour spectrogramme
+        // --- mainSource filtré silencieux pour mise à jour spectrogramme ---
         const oldGain = this.gainNode.gain.value;
-        this.gainNode.gain.value = 0; // on ne veut pas entendre le son
-        this.play(this.quizBand, false);
+        this.gainNode.gain.value = 0; 
+        this.play(this.quizBand, false); // mainSource filtré mais silencieux
         this.gainNode.gain.value = oldGain;
 
+        // passer à la question suivante ou finir le quiz
         if(this.quizCount < this.totalQuestions) {
             this.nextQuiz();
         } else {
-            // fin quiz
             if(this.mainSource){ try { this.mainSource.stop(); } catch(e){} this.isPlaying = false; }
             this.endQuiz();
         }
