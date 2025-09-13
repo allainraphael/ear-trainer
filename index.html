@@ -239,7 +239,7 @@ this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
   this.gainNode.connect(this.analyser);
   this.analyser.connect(this.audioContext.destination);
   this.setVolume(this.volumeSlider.value);
-
+  this.drawSpectrum();
     this.source = null;
     this.filterNode = null;
     this.buffer = null;
@@ -721,6 +721,9 @@ if (!this.modeQuestion && this.analyser && this.floatData) {
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
+      else {
+        this.floatData.fill(-100); // placeholder pour spectre vide
+    }
         ctx.stroke();
     }
 }
@@ -899,9 +902,31 @@ nextQuiz() {
   }
 }
 
-const app = new AudioApp();
-app.updateBands();   // initialise les bandes selon le select
-app.drawSpectrum();  // dessine le canvas immédiatement
+  window.addEventListener("load", () => {
+    const app = new AudioApp();
+
+    // === Initialisation audio minimale pour l'analyse et le spectre ===
+    if (!app.audioContext) app.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (!app.gainNode) {
+        app.gainNode = app.audioContext.createGain();
+        app.analyser = app.audioContext.createAnalyser();
+        app.analyser.fftSize = 2048;
+        app.floatData = new Float32Array(app.analyser.frequencyBinCount);
+        app.gainNode.connect(app.analyser);
+        app.analyser.connect(app.audioContext.destination);
+        app.setVolume(app.volumeSlider.value);
+    }
+
+    app.resizeCanvas();       // redimensionne correctement le canvas
+    app.updateBands();        // initialise les bandes selon le select
+    app.drawSpectrum();       // dessine le canvas immédiatement
+
+    // Redessiner lors du redimensionnement de la fenêtre
+    window.addEventListener("resize", () => {
+        app.resizeCanvas();
+        app.drawSpectrum();
+    });
+});
 </script>
 </body>
 </html>
