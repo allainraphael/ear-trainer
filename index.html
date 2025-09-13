@@ -700,8 +700,9 @@ drawSpectrum() {
         ctx.fillText((freq >= 1000 ? (freq / 1000) + "k" : freq) + "Hz", this.frequencyToX(freq, width) + 2, height - 5);
     });
 
-    // --- spectre audio ---
-    if (!this.modeQuestion && this.analyser && this.buffer) {
+// --- spectre audio ---
+if (!this.modeQuestion && this.analyser && this.floatData) {
+    if(this.buffer){ 
         this.analyser.getFloatFrequencyData(this.floatData);
         ctx.beginPath();
         ctx.strokeStyle = '#4facfe';
@@ -716,6 +717,7 @@ drawSpectrum() {
         }
         ctx.stroke();
     }
+}
 
     // --- mode quiz ---
     if (this.modeQuestion) {
