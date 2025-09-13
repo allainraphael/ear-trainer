@@ -151,14 +151,23 @@ button.active { background:#4facfe; color:white; }
 
   <fieldset id="analyserFrame">
     <legend>Analyser</legend>
-    <select id="modeSelect">
-      <option value="7" selected>7 bandes</option>
-      <option value="10">10 bandes</option>
-      <option value="11">11 bandes voix</option>
-      <option value="15">15 bandes</option>
-      <option value="31">31 bandes</option>
-    </select>
-    <button id="resetBtn">♻️ Reset bande</button>
+   <label for="bandCountSelect">Nb bandes :</label>
+<select id="bandCountSelect">
+  <option value="7" selected>7 bandes</option>
+  <option value="10">10 bandes</option>
+  <option value="11">11 bandes voix</option>
+  <option value="15">15 bandes</option>
+  <option value="31">31 bandes</option>
+</select>
+
+<!-- Sélecteur du mode de filtre -->
+<label for="filterModeSelect">Mode :</label>
+<select id="filterModeSelect">
+  <option value="band">Bandes</option>
+  <option value="cut">Cut (-12 dB)</option>
+  <option value="boost">Boost (+6 dB)</option>
+</select>
+<button id="resetBtn">♻️ Reset bande</button>
     <button id="quizBtn">🎯 Quiz</button>
   </fieldset>
 </div>
@@ -256,6 +265,15 @@ class AudioApp {
     this.animationId = null;
 
     this.updateBands();
+    this.bandCountSelect = document.getElementById("bandCountSelect");
+this.filterModeSelect = document.getElementById("filterModeSelect");
+this.bandCountSelect.addEventListener("change", ()=>this.updateBands());
+this.filterModeSelect.addEventListener("change", ()=>this.updateBands());
+
+    this.mode = "band"; 
+document.getElementById("modeSelect").addEventListener("change", (e) => {
+  this.mode = e.target.value;
+});
   }
 
   bindEvents(){
@@ -272,7 +290,8 @@ class AudioApp {
   }
 
  updateBands() {
-  const mode = this.modeSelect.value;
+  const mode = this.bandCountSelect.value;   // nombre de bandes
+  const filterMode = this.filterModeSelect.value; // band / cut / boost
 
   if (mode === '7') {
     this.frequencyBands = {
@@ -300,24 +319,23 @@ class AudioApp {
     };
   } 
   else if (mode === '11') {
-  this.frequencyBands = {
-    b1:  { low: 20,   high: 100,   color: 'rgba(255,0,0,0.5)',     name: 'Bruits' },
-    b2:  { low: 100,  high: 180,   color: 'rgba(255,165,0,0.5)',   name: 'Effet de proximité\nEffet de Pièce' },
-    b3:  { low: 180,  high: 300,   color: 'rgba(255,255,0,0.5)',   name: 'Voix étouffée' },
-    b4:  { low: 300,  high: 600,   color: 'rgba(0,255,0,0.5)',     name: 'Voix nasillarde' },
-    b5:  { low: 600,  high: 1200,  color: 'rgba(0,255,255,0.5)',   name: '' },
-    b6:  { low: 1200, high: 2000,  color: 'rgba(0,0,255,0.5)',     name: 'Présence' },
-    b7:  { low: 2000, high: 4000,  color: 'rgba(255,0,255,0.5)',   name: 'Agressivité' },
-    b8:  { low: 4000, high: 6000,  color: 'rgba(255,128,128,0.5)', name: 'Aigus' },
-    b9:  { low: 6000, high: 9000,  color: 'rgba(128,255,128,0.5)', name: 'Sifflantes' },
-    b10: { low: 9000, high: 12000, color: 'rgba(128,128,255,0.5)', name: 'Brillance\n9 kHz   \n  12 kHz' },
-    b11: { low: 12000, high: 20000,color: 'rgba(200,200,200,0.5)', name: 'Air' }
-  };
-}
+    this.frequencyBands = {
+      b1:  { low: 20,   high: 100,   color: 'rgba(255,0,0,0.5)',     name: 'Bruits' },
+      b2:  { low: 100,  high: 180,   color: 'rgba(255,165,0,0.5)',   name: 'Effet de proximité\nEffet de Pièce' },
+      b3:  { low: 180,  high: 300,   color: 'rgba(255,255,0,0.5)',   name: 'Voix étouffée' },
+      b4:  { low: 300,  high: 600,   color: 'rgba(0,255,0,0.5)',     name: 'Voix nasillarde' },
+      b5:  { low: 600,  high: 1200,  color: 'rgba(0,255,255,0.5)',   name: '' },
+      b6:  { low: 1200, high: 2000,  color: 'rgba(0,0,255,0.5)',     name: 'Présence' },
+      b7:  { low: 2000, high: 4000,  color: 'rgba(255,0,255,0.5)',   name: 'Agressivité' },
+      b8:  { low: 4000, high: 6000,  color: 'rgba(255,128,128,0.5)', name: 'Aigus' },
+      b9:  { low: 6000, high: 9000,  color: 'rgba(128,255,128,0.5)', name: 'Sifflantes' },
+      b10: { low: 9000, high: 12000, color: 'rgba(128,128,255,0.5)', name: 'Brillance\n9 kHz   \n  12 kHz' },
+      b11: { low: 12000, high: 20000,color: 'rgba(200,200,200,0.5)', name: 'Air' }
+    };
+  }
   else if (mode === '15') {
     const freqs = [25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000];
     this.frequencyBands = {};
-
     for (let i = 0; i < freqs.length; i++) {
       const low = i === 0 ? 20 : (freqs[i - 1] + freqs[i]) / 2;
       const high = i === freqs.length - 1 ? 20000 : (freqs[i] + freqs[i + 1]) / 2;
@@ -332,7 +350,6 @@ class AudioApp {
   else if (mode === '31') {
     const freqs = [20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000];
     this.frequencyBands = {};
-
     for (let i = 0; i < freqs.length; i++) {
       const low = i === 0 ? 20 : (freqs[i - 1] + freqs[i]) / 2;
       const high = i === freqs.length - 1 ? 20000 : (freqs[i] + freqs[i + 1]) / 2;
@@ -345,9 +362,64 @@ class AudioApp {
     }
   }
 
-   // ne pas relancer le son ici
-    this.currentBand = null; // reset sélection bande
-    this.drawSpectrum();      // juste redessiner le canvas
+  // appliquer le mode de filtre (band / cut / boost) sur chaque bande
+  for (const key in this.frequencyBands) {
+    const band = this.frequencyBands[key];
+    band.filterType = (filterMode === "band") ? "bandpass" : "peaking";
+    band.gain = (filterMode === "cut") ? -12 : (filterMode === "boost" ? 6 : 0);
+    // fréquence centrale et Q pour peaking
+    band.freq = Math.sqrt(band.low * band.high);
+    band.q = band.freq / (band.high - band.low);
+  }
+
+  // ne pas relancer le son ici
+  this.currentBand = null;
+  this.drawSpectrum();
+}
+
+  applyBandFilter(bandKey) {
+  const band = this.frequencyBands[bandKey];
+  if (!band || !this.audioContext) return;
+
+  // Déterminer la fréquence centrale et le Q
+  const centerFreq = (band.low + band.high) / 2;
+  const bandwidth = band.high - band.low;
+  const q = centerFreq / bandwidth;
+
+  // Choix du mode de filtre
+  const filterMode = this.filterModeSelect.value;
+  let f = this.audioContext.createBiquadFilter();
+
+  if (filterMode === "band") {
+    f.type = "bandpass";
+    f.frequency.value = centerFreq;
+    f.Q.value = q;
+    f.gain.value = 0;
+  } else if (filterMode === "cut") {
+    f.type = "peaking";
+    f.frequency.value = centerFreq;
+    f.Q.value = q;
+    f.gain.value = -12;
+  } else if (filterMode === "boost") {
+    f.type = "peaking";
+    f.frequency.value = centerFreq;
+    f.Q.value = q;
+    f.gain.value = +6;
+  }
+
+  // Déconnecter les anciennes connexions si nécessaire
+  if (this.activeFilter) {
+    try { this.activeFilter.disconnect(); } catch (e) {}
+  }
+
+  // Reconnecter la chaîne audio
+  if (this.mainSource) {
+    this.mainSource.disconnect();
+    this.mainSource.connect(f);
+    f.connect(this.gainNode);
+  }
+
+  this.activeFilter = f; // garder la référence pour le prochain clic
 }
 
   async loadFile(e){
@@ -687,6 +759,10 @@ drawSpectrum() {
                     }
 
                     this.currentBand = key;
+                    // Appliquer le filtre selon le mode sélectionné
+                    this.applyBandFilter(key, this.mode);
+
+                    // Relancer le son
                     this.play(key);
                 }
             }
