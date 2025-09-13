@@ -265,14 +265,9 @@ class AudioApp {
 
     this.updateBands();
     this.bandCountSelect = document.getElementById("bandCountSelect");
-this.filterModeSelect = document.getElementById("filterModeSelect");
-this.bandCountSelect.addEventListener("change", ()=>this.updateBands());
-this.filterModeSelect.addEventListener("change", ()=>this.updateBands());
-
-    this.mode = "band"; 
-document.getElementById("bandCountSelect").addEventListener("change", (e) => {
-  this.mode = e.target.value;
-});
+    this.filterModeSelect = document.getElementById("filterModeSelect");
+    this.bandCountSelect.addEventListener("change", ()=>this.updateBands());
+    this.filterModeSelect.addEventListener("change", ()=>this.updateBands());
   }
 
   bindEvents(){
