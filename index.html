@@ -894,6 +894,8 @@ nextQuiz() {
 }
 
 const app = new AudioApp();
+app.updateBands();   // initialise les bandes selon le select
+app.drawSpectrum();  // dessine le canvas immédiatement
 </script>
 </body>
 </html>
