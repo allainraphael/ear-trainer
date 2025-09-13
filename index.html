@@ -231,10 +231,16 @@ class AudioApp {
     this.pinkNoiseBtn.addEventListener("click", ()=>this.toggleNoise("pink"));
 
     // audio
-    this.audioContext = null;
+this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  this.gainNode = this.audioContext.createGain();
+  this.analyser = this.audioContext.createAnalyser();
+  this.analyser.fftSize = 2048;
+  this.floatData = new Float32Array(this.analyser.frequencyBinCount);
+  this.gainNode.connect(this.analyser);
+  this.analyser.connect(this.audioContext.destination);
+  this.setVolume(this.volumeSlider.value);
+
     this.source = null;
-    this.analyser = null;
-    this.gainNode = null;
     this.filterNode = null;
     this.buffer = null;
     this.loadedBuffer = null;
