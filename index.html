@@ -472,13 +472,22 @@ play(filteredBand = null) {
     // Filtrage éventuel pour bande sélectionnée
     if (filteredBand) {
         const band = this.frequencyBands[filteredBand];
-        const filter = this.audioContext.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.value = Math.sqrt(band.low * band.high);
-        filter.Q.value = filter.frequency.value / (band.high - band.low);
-        source.connect(filter);
-        filter.connect(this.gainNode);
-        this.filterNode = filter;
+       // Création de plusieurs filtres en cascade pour pentes plus raides
+const filters = [];
+for (let i = 0; i < 3; i++) { // 3 filtres = pente plus forte
+  const f = this.audioContext.createBiquadFilter();
+  f.type = "bandpass";
+  f.frequency.value = Math.sqrt(band.low * band.high);
+  f.Q.value = (f.frequency.value / (band.high - band.low)) * 1.2; // un peu plus serré
+  filters.push(f);
+}
+
+// chaînage
+source.connect(filters[0]);
+for (let i = 0; i < filters.length - 1; i++) {
+  filters[i].connect(filters[i + 1]);
+}
+filters[filters.length - 1].connect(this.gainNode);
     } else {
         source.connect(this.gainNode);
     }
@@ -508,13 +517,22 @@ playQuiz(filteredBand) {
 
     // Filtre pour bande quiz
     const band = this.frequencyBands[filteredBand];
-    const filter = this.audioContext.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.value = Math.sqrt(band.low * band.high);
-    filter.Q.value = filter.frequency.value / (band.high - band.low);
+    // Création de plusieurs filtres en cascade pour pentes plus raides
+const filters = [];
+for (let i = 0; i < 3; i++) { // 3 filtres = pente plus forte
+  const f = this.audioContext.createBiquadFilter();
+  f.type = "bandpass";
+  f.frequency.value = Math.sqrt(band.low * band.high);
+  f.Q.value = (f.frequency.value / (band.high - band.low)) * 1.2; // un peu plus serré
+  filters.push(f);
+}
 
-    source.connect(filter);
-    filter.connect(this.analyser); // uniquement pour spectrogramme
+// chaînage
+source.connect(filters[0]);
+for (let i = 0; i < filters.length - 1; i++) {
+  filters[i].connect(filters[i + 1]);
+}
+filters[filters.length - 1].connect(this.analyser); // uniquement pour spectrogramme
     this.quizSource = source;
 
     source.start();
