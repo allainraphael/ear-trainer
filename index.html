@@ -284,6 +284,8 @@ class AudioApp {
     this.resizeCanvas();
     window.addEventListener("resize", ()=>this.resizeCanvas());
     this.canvas.addEventListener("click",(e)=>this.handleCanvasClick(e));
+    this.freeMode.x = this.frequencyToX(this.freeMode.f0, this.canvas.width);
+    this.freeMode.y = this.canvas.height / 2;
     this.animationId = null;
 
     this.updateBands();
@@ -341,7 +343,7 @@ this.canvas.addEventListener("mouseleave", ()=>this.freeMode.dragging=false);
 }
 
  updateFreeFilter(){
-    if(!this.mainSource) return;
+    if (!this.audioContext || !this.gainNode) return;
     if(!this.peakingFilter){
         this.peakingFilter = this.audioContext.createBiquadFilter();
         this.peakingFilter.type = "peaking";
@@ -368,6 +370,7 @@ this.canvas.addEventListener("mouseleave", ()=>this.freeMode.dragging=false);
         this.frequencyBands = {};
         this.currentBand = null;
         this.drawSpectrum();
+        if (!this.animationId) this.animate();
         return;   // on arrête ici UNIQUEMENT pour Free
     }
 
