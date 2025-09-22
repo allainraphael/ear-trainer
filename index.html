@@ -74,7 +74,6 @@ button.active { background:#4facfe; color:white; }
 #fileInput { display: none; }
 
 /* bouton parcourir identique aux autres */
-/* bouton parcourir identique aux autres */
 .fileBtn {
   display:inline-block;
   padding: 8px 16px;
@@ -119,6 +118,15 @@ button.active { background:#4facfe; color:white; }
 #resultsTable th { background:#222; }
 .correct { color:lime; font-weight:bold; }
 .incorrect { color:red; font-weight:bold; }
+
+/* styles pour les éléments désactivés */
+button:disabled,
+select:disabled {
+background: #555 !important;   /* gris foncé */
+color: #888 !important;        /* texte clair */
+cursor: not-allowed;           /* curseur interdit */
+opacity: 0.6;                  /* léger effet transparent */
+}
 
 /* boutons quiz */
 #replayBtn, #newQuizBtn, #quitQuizBtn { display:none; margin-top:15px; background:#4caf50; color:white; }
