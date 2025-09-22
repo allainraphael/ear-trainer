@@ -689,13 +689,38 @@ filters[filters.length - 1].connect(this.analyser); // uniquement pour spectrogr
 }
 
 drawSpectrum() {
+    if (!this.analyser) return;
+
     const ctx = this.ctx;
     const width = this.width;
     const height = this.height;
 
-    // fond noir
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, height);
+
+    // --- MODE FREE ---
+    if (this.modeSelect.value === "Free") {
+        const midY = height / 2;
+
+        // ligne centrale
+        ctx.strokeStyle = "#555";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, midY);
+        ctx.lineTo(width, midY);
+        ctx.stroke();
+
+        // dessiner le point du filtre
+        const { f0, gain } = this.freeMode;
+        const x = this.frequencyToX(f0, width);
+        const y = midY - gain * 5; // facteur visuel pour gain
+        this.freeMode.x = x;
+        this.freeMode.y = y;
+
+        ctx.fillStyle = "#4facfe";
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
     // --- affichage des bandes ---
     for (const key in this.frequencyBands) {
@@ -719,29 +744,6 @@ drawSpectrum() {
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-
-        if(this.modeSelect.value === "Free") {
-    // ligne centrale
-    const midY = this.height/2;
-    ctx.strokeStyle = "#555";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, midY);
-    ctx.lineTo(this.width, midY);
-    ctx.stroke();
-
-    // point de cloche
-    const {f0, gain} = this.freeMode;
-    const x = this.frequencyToX(f0, this.width);
-    const y = midY - gain * 5; // facteur visuel pour gain
-    this.freeMode.x = x;
-    this.freeMode.y = y;
-
-    ctx.fillStyle = "#4facfe";
-    ctx.beginPath();
-    ctx.arc(x, y, 8, 0, Math.PI*2);
-    ctx.fill();
-}
 
       if(this.modeSelect.value === '31'){
             // cas spécial 31 bandes (tu avais déjà ce comportement)
