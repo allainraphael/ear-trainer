@@ -242,6 +242,16 @@ class AudioApp {
     this.whiteNoiseBtn.addEventListener("click", ()=>this.toggleNoise("white"));
     this.pinkNoiseBtn.addEventListener("click", ()=>this.toggleNoise("pink"));
   
+    // pour le mode Free
+    this.freeMode = {
+  f0: 1000,         // fréquence centrale en Hz
+  gain: 0,          // gain en dB
+  Q: 1,             // facteur Q
+  dragging: false,  // si on déplace le point
+  x: 0,             // position x sur canvas
+  y: 0              // position y sur canvas
+};
+
     
     // audio
     this.audioContext = null;
@@ -295,9 +305,40 @@ class AudioApp {
     this.quitQuizBtn.addEventListener("click", ()=>this.quitQuiz());
     this.volumeSlider.addEventListener("input", ()=>this.setVolume(this.volumeSlider.value));
     this.modeSelect.addEventListener("change", ()=>this.updateBands());
-  }
+    
+    this.canvas.addEventListener("mousemove", e=>{
+    if(!this.freeMode.dragging) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (this.width / rect.width);
+    const y = (e.clientY - rect.top) * (this.height / rect.height);
 
- updateBands() {
+    // mettre à jour f0 et gain
+    const minFreq = 20, maxFreq = 20000;
+    this.freeMode.f0 = minFreq * Math.pow(maxFreq/minFreq, x/this.width);
+    this.freeMode.gain = (this.height/2 - y)/5; // inverse du y
+    this.updateFreeFilter();
+});
+this.canvas.addEventListener("mouseup", ()=>this.freeMode.dragging=false);
+this.canvas.addEventListener("mouseleave", ()=>this.freeMode.dragging=false);
+}
+
+ updateFreeFilter(){
+    if(!this.mainSource) return;
+    if(!this.peakingFilter){
+        this.peakingFilter = this.audioContext.createBiquadFilter();
+        this.peakingFilter.type = "peaking";
+        // chaîner le filtre entre source et gainNode
+        this.mainSource.disconnect();
+        this.mainSource.connect(this.peakingFilter);
+        this.peakingFilter.connect(this.gainNode);
+    }
+    const {f0, gain, Q} = this.freeMode;
+    this.peakingFilter.frequency.value = f0;
+    this.peakingFilter.gain.value = gain;
+    this.peakingFilter.Q.value = Q;
+}
+
+  updateBands() {
   const mode = this.modeSelect.value;
   
    // activer/désactiver filtres et quiz selon le mode
@@ -651,7 +692,30 @@ drawSpectrum() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
 
-        if(this.modeSelect.value === '31'){
+        if(this.modeSelect.value === "Free") {
+    // ligne centrale
+    const midY = this.height/2;
+    ctx.strokeStyle = "#555";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(this.width, midY);
+    ctx.stroke();
+
+    // point de cloche
+    const {f0, gain} = this.freeMode;
+    const x = this.frequencyToX(f0, this.width);
+    const y = midY - gain * 5; // facteur visuel pour gain
+    this.freeMode.x = x;
+    this.freeMode.y = y;
+
+    ctx.fillStyle = "#4facfe";
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI*2);
+    ctx.fill();
+}
+
+      if(this.modeSelect.value === '31'){
             // cas spécial 31 bandes (tu avais déjà ce comportement)
             const parts = String(band.name).split(' ');
             ctx.fillText(parts[0] || '', (x1 + x2)/2, 20);
@@ -746,6 +810,17 @@ drawSpectrum() {
             break;
         }
     }
+if(this.modeSelect.value === "Free"){
+    const dx = e.clientX - this.canvas.getBoundingClientRect().left;
+    const dy = e.clientY - this.canvas.getBoundingClientRect().top;
+    const x = dx * (this.width / this.canvas.offsetWidth);
+    const y = dy * (this.height / this.canvas.offsetHeight);
+
+    const dist = Math.hypot(x - this.freeMode.x, y - this.freeMode.y);
+    if(dist < 10){ // si clic proche du point
+        this.freeMode.dragging = true;
+    }
+}
 }
 
   // ===== QUIZ =====
