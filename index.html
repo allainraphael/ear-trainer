@@ -253,10 +253,9 @@ class AudioApp {
 };
 
     // mettre les coordonnées initiales sur le canvas
-this.freeMode.x = this.frequencyToX(this.freeMode.f0, this.canvas.width);
-this.freeMode.y = this.canvas.height / 2;
+this.freeMode.x = this.frequencyToX(this.freeMode.f0, this.width);
+this.freeMode.y = this.height / 2;
 
-    
     // audio
     this.audioContext = null;
     this.source = null;
