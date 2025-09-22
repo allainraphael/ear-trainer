@@ -677,9 +677,30 @@ filters[filters.length - 1].connect(this.analyser); // uniquement pour spectrogr
   }
 }
   
-  frequencyToX(freq,width){ const min=20,max=20000; const logMin=Math.log10(min), logMax=Math.log10(max); const ratio=(Math.log10(freq)-logMin)/(logMax-logMin); return ratio*width; }
+  xToFrequency(x, width) {
+    const nyquist = this.audioContext.sampleRate / 2;
+    const minHz = 20;
+    const maxHz = nyquist;
+    const logMin = Math.log10(minHz);
+    const logMax = Math.log10(maxHz);
+    const ratio = x / width;
+    return Math.pow(10, logMin + ratio * (logMax - logMin));
+}
 
-  dbToY(db,height){ const maxDb=20; let minDb=-100; if(this.floatData){ let minVal=Math.min(...this.floatData); if(minVal>-100) minDb=Math.floor(minVal/10)*10; } const ratio=(db-minDb)/(maxDb-minDb); return height-(ratio*height); }
+  frequencyToX(freq,width){ 
+    const min=20,max=20000; 
+    const logMin=Math.log10(min), logMax=Math.log10(max); 
+    const ratio=(Math.log10(freq)-logMin)/(logMax-logMin); 
+    return ratio*width; }
+
+  dbToY(db,height){ 
+    const maxDb=20; 
+    let minDb=-100; 
+    if(this.floatData){ 
+      let minVal=Math.min(...this.floatData); 
+      if(minVal>-100) minDb=Math.floor(minVal/10)*10; } 
+    const ratio=(db-minDb)/(maxDb-minDb); 
+    return height-(ratio*height); }
 
   resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
