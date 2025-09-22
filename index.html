@@ -329,9 +329,9 @@ this.canvas.addEventListener("mousemove", e => {
     const y = (e.clientY - rect.top) * (this.height / rect.height);
 
     // convertir x -> fréquence logarithmique et y -> gain
-    const minFreq = 20, maxFreq = 20000;
-    this.freeMode.f0 = minFreq * Math.pow(maxFreq/minFreq, x/this.width);
-    this.freeMode.gain = (this.height/2 - y)/5;
+const minFreq = 20, maxFreq = 20000;
+this.freeMode.f0 = minFreq * Math.pow(maxFreq/minFreq, x/this.width);
+this.freeMode.gain = (this.height/2 - y)/5;
 
     this.freeMode.x = x;
     this.freeMode.y = y;
@@ -376,7 +376,7 @@ this.canvas.addEventListener("mouseleave", () => { this.freeMode.dragging = fals
 
     // démarrer l'animation si la lecture est en cours
     if(this.isPlaying && !this.animationId) this.animate();
-    return;
+  
 }
 
     // pour tous les autres modes → réactiver boutons
@@ -742,20 +742,21 @@ drawSpectrum() {
     ctx.stroke();
 
     // --- cloche du filtre autour du point ---
-    const peak = this.freeMode.gain;
-    const f0 = this.freeMode.f0;
-    const curveWidth = 2000; // largeur visuelle autour du point en Hz
-    ctx.strokeStyle = "#4facfe";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let fx = 0; fx < width; fx++) {
-        const freq = 20 * Math.pow(20000/20, fx/width); // logarithme
-        const distance = Math.log2(freq/f0);
-        const db = peak * Math.exp(-distance*distance*8); // cloche gaussienne
-        const y = midY - db*5;
-        if (fx === 0) ctx.moveTo(fx, y);
-        else ctx.lineTo(fx, y);
-    }
+const peak = this.freeMode.gain;
+const f0 = this.freeMode.f0;
+const Q = this.freeMode.Q;
+ctx.strokeStyle = "#4facfe";
+ctx.lineWidth = 2;
+ctx.beginPath();
+for (let fx = 0; fx < width; fx++) {
+    const freq = 20 * Math.pow(20000/20, fx/width); // logarithme
+    // réponse gaussienne approximative selon Q
+    const delta = Math.log2(freq/f0);
+    const db = peak * Math.exp(-0.5 * (delta*Q*4)**2); // Q agit sur largeur
+    const y = height/2 - db*5;
+    if (fx === 0) ctx.moveTo(fx, y);
+    else ctx.lineTo(fx, y);
+}
     ctx.stroke();
 
     // point bleu draggable
