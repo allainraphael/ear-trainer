@@ -358,18 +358,19 @@ this.canvas.addEventListener("mouseleave", ()=>this.freeMode.dragging=false);
 
   updateBands() {
     const mode = this.modeSelect.value;
-    const bands = {};
 
     if (mode === "Free") {
-        // en Free → pas de bandes
-        this.frequencyBands = {};  
+        // désactiver filtres + quiz
         this.filterModeSelect.disabled = true;
         this.quizBtn.disabled = true;
-    } else {
-        this.filterModeSelect.disabled = false;
-        this.quizBtn.disabled = false;
-        return;   // ← empêcher le reste de updateBands() de réactiver
-      }
+
+        // vider les bandes pour ne rien afficher
+        this.frequencyBands = {};
+        this.currentBand = null;
+        this.drawSpectrum();
+        return;   // on arrête ici UNIQUEMENT pour Free
+    }
+
     // pour tous les autres modes → réactiver boutons
     this.filterModeSelect.disabled = false;
     this.quizBtn.disabled = false;
