@@ -299,6 +299,15 @@ class AudioApp {
 
  updateBands() {
   const mode = this.modeSelect.value;
+  
+   // activer/désactiver filtres et quiz selon le mode
+if (this.modeSelect.value === "Free") {
+    this.filterModeSelect.disabled = true;
+    this.quizBtn.disabled = true;
+} else {
+    this.filterModeSelect.disabled = false;
+    this.quizBtn.disabled = false;
+}
 
   if (mode === '7') {
     this.frequencyBands = {
