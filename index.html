@@ -152,7 +152,7 @@ button.active { background:#4facfe; color:white; }
   <fieldset id="analyserFrame">
     <legend>Analyser</legend>
     <select id="modeSelect">
-      <option value="FREE" selected>FREE</option>
+      <option value="Free" selected>Free</option>
       <option value="7">7 bandes</option>
       <option value="10">10 bandes</option>
       <option value="11">11 bandes voix</option>
@@ -232,20 +232,7 @@ class AudioApp {
 
     this.whiteNoiseBtn.addEventListener("click", ()=>this.toggleNoise("white"));
     this.pinkNoiseBtn.addEventListener("click", ()=>this.toggleNoise("pink"));
-    document.getElementById("modeSelect").addEventListener("change", e => {
-    this.mode = e.target.value;
-
-    // Activer/désactiver le choix du type de filtre et le bouton QUIZ
-    if (this.mode === "FREE") {
-        this.filterModeSelect.disabled = true;
-        this.startQuizButton.disabled = true;
-    } else {
-        this.filterModeSelect.disabled = false;
-        this.startQuizButton.disabled = false;
-    }
-
-    this.updateUI();
-});
+  
     
     // audio
     this.audioContext = null;
@@ -281,6 +268,11 @@ class AudioApp {
     this.animationId = null;
 
     this.updateBands();
+     // ---- Désactivation initiale si mode FREE ----
+    if (this.modeSelect.value === "Free") {
+        this.filterModeSelect.disabled = true;
+        this.quizBtn.disabled = true;
+    }
   }
 
   bindEvents(){
