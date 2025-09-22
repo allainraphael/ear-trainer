@@ -365,17 +365,20 @@ this.canvas.addEventListener("mouseleave", () => { this.freeMode.dragging = fals
     const mode = this.modeSelect.value;
 
     if (mode === "Free") {
-        // désactiver filtres + quiz
-        this.filterModeSelect.disabled = true;
-        this.quizBtn.disabled = true;
+    this.filterModeSelect.disabled = true;
+    this.quizBtn.disabled = true;
 
-        // vider les bandes pour ne rien afficher
-        this.frequencyBands = {};
-        this.currentBand = null;
-        this.drawSpectrum();
-        if (!this.animationId) this.animate();
-        return;   // on arrête ici UNIQUEMENT pour Free
-    }
+    // vider les bandes pour ne rien afficher
+    this.frequencyBands = {};
+    this.currentBand = null;
+
+    // forcer le redraw du point Free
+    this.drawSpectrum();
+
+    // démarrer l'animation si la lecture est en cours
+    if(this.isPlaying && !this.animationId) this.animate();
+    return;
+}
 
     // pour tous les autres modes → réactiver boutons
     this.filterModeSelect.disabled = false;
