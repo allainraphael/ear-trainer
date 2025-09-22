@@ -702,28 +702,46 @@ drawSpectrum() {
 
     // --- MODE FREE ---
     if (this.modeSelect.value === "Free") {
-        const midY = height / 2;
+    const midY = height / 2;
 
-        // ligne centrale
-        ctx.strokeStyle = "#555";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(0, midY);
-        ctx.lineTo(width, midY);
-        ctx.stroke();
+    // paramètres du filtre
+    const { f0, gain, Q } = this.freeMode;
 
-        // dessiner le point du filtre
-        const { f0, gain } = this.freeMode;
-        const x = this.frequencyToX(f0, width);
-        const y = midY - gain * 5; // facteur visuel pour gain
-        this.freeMode.x = x;
-        this.freeMode.y = y;
+    ctx.strokeStyle = "#4facfe";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
 
-        ctx.fillStyle = "#4facfe";
-        ctx.beginPath();
-        ctx.arc(x, y, 8, 0, Math.PI * 2);
-        ctx.fill();
+    for (let x = 0; x < width; x++) {
+        // convertir x -> fréquence
+        const freq = this.xToFrequency(x, width);
+
+        // gaussienne centrée sur f0
+        const sigma = f0 / Q;
+        const response = Math.exp(-0.5 * Math.pow((freq - f0) / sigma, 2));
+
+        // appliquer au gain
+        const y = midY - gain * response * 5; // facteur visuel
+
+        if (x === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
     }
+
+    ctx.stroke();
+
+    // dessiner le point bleu
+    const px = this.frequencyToX(f0, width);
+    const py = midY - gain * 5;
+    this.freeMode.x = px;
+    this.freeMode.y = py;
+
+    ctx.fillStyle = "#4facfe";
+    ctx.beginPath();
+    ctx.arc(px, py, 8, 0, Math.PI * 2);
+    ctx.fill();
+}
 
     // --- affichage des bandes ---
     for (const key in this.frequencyBands) {
