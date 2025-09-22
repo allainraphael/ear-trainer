@@ -368,7 +368,9 @@ this.canvas.addEventListener("mouseleave", ()=>this.freeMode.dragging=false);
     } else {
         this.filterModeSelect.disabled = false;
         this.quizBtn.disabled = false;
-
+        return;   // ← empêcher le reste de updateBands() de réactiver
+      }
+    
   if (mode === '7') {
     this.frequencyBands = {
       sub:      { low: 20, high: 60, color: 'rgba(255,0,0,0.5)', name: 'Sub' },
