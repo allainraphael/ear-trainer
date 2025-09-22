@@ -196,20 +196,7 @@ button.active { background:#4facfe; color:white; }
 </div>
 
 <script>
-document.getElementById("modeSelect").addEventListener("change", e => {
-    this.mode = e.target.value;
 
-    // Activer/désactiver le choix du type de filtre et le bouton QUIZ
-    if (this.mode === "FREE") {
-        this.filterModeSelect.disabled = true;
-        this.startQuizButton.disabled = true;
-    } else {
-        this.filterModeSelect.disabled = false;
-        this.startQuizButton.disabled = false;
-    }
-
-    this.updateUI();
-});
 
   document.getElementById("fileInput").addEventListener("change", function() {
   const fileName = this.files.length > 0 ? this.files[0].name : "";
@@ -245,7 +232,21 @@ class AudioApp {
 
     this.whiteNoiseBtn.addEventListener("click", ()=>this.toggleNoise("white"));
     this.pinkNoiseBtn.addEventListener("click", ()=>this.toggleNoise("pink"));
+    document.getElementById("modeSelect").addEventListener("change", e => {
+    this.mode = e.target.value;
 
+    // Activer/désactiver le choix du type de filtre et le bouton QUIZ
+    if (this.mode === "FREE") {
+        this.filterModeSelect.disabled = true;
+        this.startQuizButton.disabled = true;
+    } else {
+        this.filterModeSelect.disabled = false;
+        this.startQuizButton.disabled = false;
+    }
+
+    this.updateUI();
+});
+    
     // audio
     this.audioContext = null;
     this.source = null;
