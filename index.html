@@ -370,6 +370,12 @@ this.canvas.addEventListener("mouseleave", ()=>this.freeMode.dragging=false);
         this.quizBtn.disabled = false;
         return;   // ← empêcher le reste de updateBands() de réactiver
       }
+    // pour tous les autres modes → réactiver boutons
+    this.filterModeSelect.disabled = false;
+    this.quizBtn.disabled = false;
+
+    // recréer les bandes selon le mode
+    const bands = {};
     
   if (mode === '7') {
     this.frequencyBands = {
