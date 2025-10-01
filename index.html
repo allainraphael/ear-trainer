@@ -286,7 +286,8 @@ this.canvas.addEventListener("mouseup", () => {
 this.canvas.addEventListener("mouseleave", () => {
     this.isDragging = false;
 });
-
+}
+  
   updateFreeFilter(){
     if (!this.audioContext || !this.gainNode) return;
     if(!this.peakingFilter){
