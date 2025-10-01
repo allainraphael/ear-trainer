@@ -376,7 +376,7 @@ this.canvas.addEventListener("mouseleave", () => { this.freeMode.dragging = fals
 
     // démarrer l'animation si la lecture est en cours
     if(this.isPlaying && !this.animationId) this.animate();
-  
+    return; // <-- IMPORTANT sinon le reste s’exécute aussi
 }
 
     // pour tous les autres modes → réactiver boutons
