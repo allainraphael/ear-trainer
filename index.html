@@ -785,7 +785,7 @@ try {
       const xx = dx * (this.width / this.canvas.offsetWidth);
       const yy = dy * (this.height / this.canvas.offsetHeight);
       const dist = Math.hypot(xx - this.freeMode.x, yy - this.freeMode.y);
-      if(dist < 10) { this.freeMode.dragging = true; }
+      if(dist < 10) { this.isDragging = true; }
     }
   }
 
