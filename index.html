@@ -299,6 +299,15 @@ this.freeMode.y = this.height / 2;
     }
   }
 
+  resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    this.width = this.canvas.offsetWidth;
+    this.height = this.canvas.offsetHeight;
+    this.canvas.width = this.width * dpr;
+    this.canvas.height = this.height * dpr;
+    this.ctx.setTransform(1,0,0,1,0,0); // reset transform
+    this.ctx.scale(dpr, dpr);
+}
   bindEvents(){
     this.fileInput.addEventListener("change", e=>this.loadFile(e));
     this.playBtn.addEventListener("click", ()=>this.togglePlay());
@@ -710,16 +719,6 @@ filters[filters.length - 1].connect(this.analyser); // uniquement pour spectrogr
     const ratio=(db-minDb)/(maxDb-minDb); 
     return height-(ratio*height); }
 
-  resizeCanvas() {
-    const dpr = window.devicePixelRatio || 1;
-    this.width = this.canvas.offsetWidth;
-    this.height = this.canvas.offsetHeight;
-    this.canvas.width = this.width * dpr;
-    this.canvas.height = this.height * dpr;
-    this.ctx.setTransform(1,0,0,1,0,0); // reset transform
-    this.ctx.scale(dpr, dpr);
-}
-
 drawSpectrum() {
     if (!this.analyser) return;
 
@@ -855,7 +854,10 @@ for (let fx = 0; fx < width; fx++) {
     }
 }
 
-  animate(){ if(!this.isPlaying) { this.animationId=null; return; } this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
+  animate(){ 
+    if (!this.analyser) return;
+    if(!this.isPlaying) { this.animationId=null; return; } 
+    this.animationId=requestAnimationFrame(()=>this.animate()); this.drawSpectrum(); }
 
   handleCanvasClick(e){
     const rect = this.canvas.getBoundingClientRect();
