@@ -159,6 +159,7 @@ class AudioApp {
     this.filterModeSelect = document.getElementById("filterModeSelect");
     this.whiteNoiseBtn = document.getElementById("whiteNoiseBtn");
     this.pinkNoiseBtn = document.getElementById("pinkNoiseBtn");
+    this.isDragging = false;
 
     this.whiteNoiseBtn.addEventListener("click", ()=>this.toggleNoise("white"));
     this.pinkNoiseBtn.addEventListener("click", ()=>this.toggleNoise("pink"));
@@ -242,37 +243,49 @@ class AudioApp {
     this.modeSelect.addEventListener("change", ()=>this.updateBands());
     this.canvas.addEventListener("click",(e)=>this.handleCanvasClick(e));
 
-    // drag du point Free
-    this.canvas.addEventListener("mousedown", e => {
-      if (this.modeSelect.value !== "Free") return;
-      const rect = this.canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (this.width / rect.width);
-      const y = (e.clientY - rect.top) * (this.height / rect.height);
-      const dx = x - this.freeMode.x;
-      const dy = y - this.freeMode.y;
-      if (Math.sqrt(dx*dx + dy*dy) < 15) this.freeMode.dragging = true;
-    });
+  // --- DRAG & DROP du point en mode Free ---
+this.canvas.addEventListener("mousedown", e => {
+    if (this.modeSelect.value !== "Free") return;
 
-    this.canvas.addEventListener("mousemove", e => {
-      if (!this.freeMode.dragging) return;
-      const rect = this.canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (this.width / rect.width);
-      const y = (e.clientY - rect.top) * (this.height / rect.height);
+    const rect = this.canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-      const minFreq = 20, maxFreq = 20000;
-      this.freeMode.f0 = minFreq * Math.pow(maxFreq/minFreq, x/this.width);
-      this.freeMode.gain = (this.height/2 - y)/5;
+    // Vérifier si clic proche du point bleu
+    const dx = mouseX - this.freeMode.x;
+    const dy = mouseY - this.freeMode.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
 
-      this.freeMode.x = x;
-      this.freeMode.y = y;
+    if (dist < 10) { // rayon de détection
+        this.isDragging = true;
+    }
+});
 
-      this.updateFreeFilter();
-      this.drawSpectrum();
-    });
+this.canvas.addEventListener("mousemove", e => {
+    if (!this.isDragging || this.modeSelect.value !== "Free") return;
 
-    this.canvas.addEventListener("mouseup", () => { this.freeMode.dragging = false; });
-    this.canvas.addEventListener("mouseleave", () => { this.freeMode.dragging = false; });
-  }
+    const rect = this.canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Mettre à jour la position graphique
+    this.freeMode.x = mouseX;
+    this.freeMode.y = mouseY;
+
+    // Conversion position -> valeurs audio
+    this.freeMode.f0 = this.xToFrequency(mouseX, this.width);
+    this.freeMode.gain = (this.height/2 - mouseY) / 5;
+
+    this.updateFreeFilter();
+});
+
+this.canvas.addEventListener("mouseup", () => {
+    this.isDragging = false;
+});
+
+this.canvas.addEventListener("mouseleave", () => {
+    this.isDragging = false;
+});
 
   updateFreeFilter(){
     if (!this.audioContext || !this.gainNode) return;
