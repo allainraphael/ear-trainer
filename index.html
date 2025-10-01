@@ -534,12 +534,17 @@ this.canvas.addEventListener("mouseleave", () => {
     }
 
     // Stocker source et gérer timing
-    this.mainSource = source;
-    this.startTime = this.audioContext.currentTime - this.pauseTime;
-    this.isPlaying = true;
+this.mainSource = source;
+this.startTime = this.audioContext.currentTime - this.pauseTime;
+this.isPlaying = true;
 
-    if
+if (!this.animationId) this.animate(); // <-- compléter le if correctement
 
+try { 
+    source.start(0, this.pauseTime); 
+} catch(e) { 
+    console.error('source.start failed', e); 
+}
 
   playQuiz(filteredBand) {
     if (!this.buffer || !filteredBand) return;
