@@ -277,6 +277,7 @@ this.canvas.addEventListener("mousemove", e => {
     this.freeMode.gain = (this.height/2 - mouseY) / 5;
 
     this.updateFreeFilter();
+    this.drawSpectrum();
 });
 
 this.canvas.addEventListener("mouseup", () => {
@@ -288,23 +289,22 @@ this.canvas.addEventListener("mouseleave", () => {
 });
 }
   
-  updateFreeFilter(){
+  updateFreeFilter() {
     if (!this.audioContext || !this.gainNode) return;
-    if(!this.peakingFilter){
-      this.peakingFilter = this.audioContext.createBiquadFilter();
-      this.peakingFilter.type = "peaking";
-      if (this.mainSource) {
-        try { this.mainSource.disconnect(); } catch(e){}
-        try { this.mainSource.connect(this.peakingFilter); } catch(e){ console.warn('connect main->peaking failed', e); }
+
+    // Crée le filtre s'il n'existe pas encore
+    if (!this.peakingFilter) {
+        this.peakingFilter = this.audioContext.createBiquadFilter();
+        this.peakingFilter.type = "peaking";
         this.peakingFilter.connect(this.gainNode);
-      }
     }
-    // toujours mettre à jour les valeurs (même si peakingFilter existait)
-    const {f0, gain, Q} = this.freeMode;
+
+    // Met à jour les valeurs du filtre
+    const { f0, gain, Q } = this.freeMode;
     this.peakingFilter.frequency.value = f0;
     this.peakingFilter.gain.value = gain;
     this.peakingFilter.Q.value = Q;
-  }
+}
 
   updateBands() {
     const mode = this.modeSelect.value;
@@ -482,44 +482,64 @@ this.canvas.addEventListener("mouseleave", () => {
     }
   }
 
-  play(filteredBand = null, silent = false) {
-    if (!this.buffer) { console.warn('play: no buffer'); return; }
-    this.initAudio();
-    if (this.audioContext.state === "suspended") {
-      // resume on user gesture
-      this.audioContext.resume().then(()=>{}).catch(e=>console.warn('resume failed', e));
+ play(filteredBand = null, silent = false) {
+    if (!this.buffer) { 
+        console.warn('play: no buffer'); 
+        return; 
     }
 
-    if (this.mainSource) { try { this.mainSource.stop(); } catch(e){} this.mainSource = null; }
+    this.initAudio();
+
+    if (this.audioContext.state === "suspended") {
+        // resume on user gesture
+        this.audioContext.resume().catch(e => console.warn('resume failed', e));
+    }
+
+    // Stop previous source
+    if (this.mainSource) { 
+        try { this.mainSource.stop(); } catch(e) {} 
+        this.mainSource = null; 
+    }
 
     const source = this.audioContext.createBufferSource();
     source.buffer = this.buffer;
     source.loop = this.isLooping;
 
-    if (filteredBand) {
-      const band = this.frequencyBands[filteredBand];
-      const filters = [];
-      for (let i = 0; i < 3; i++) {
-        const f = this.audioContext.createBiquadFilter();
-        f.type = "bandpass";
-        f.frequency.value = Math.sqrt(band.low * band.high);
-        f.Q.value = (f.frequency.value / (band.high - band.low)) * 1.2;
-        filters.push(f);
-      }
-      source.connect(filters[0]);
-      for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i+1]);
-      filters[filters.length - 1].connect(this.gainNode);
+    // --- Connexion audio selon mode ---
+    if (this.modeSelect.value === "Free") {
+        // Mode Free → peakingFilter
+        if (!this.peakingFilter) {
+            this.peakingFilter = this.audioContext.createBiquadFilter();
+            this.peakingFilter.type = "peaking";
+            this.peakingFilter.connect(this.gainNode);
+        }
+        source.connect(this.peakingFilter);
+    } else if (filteredBand) {
+        // Mode filtrage par bande
+        const band = this.frequencyBands[filteredBand];
+        const filters = [];
+        for (let i = 0; i < 3; i++) {
+            const f = this.audioContext.createBiquadFilter();
+            f.type = "bandpass";
+            f.frequency.value = Math.sqrt(band.low * band.high);
+            f.Q.value = (f.frequency.value / (band.high - band.low)) * 1.2;
+            filters.push(f);
+        }
+        source.connect(filters[0]);
+        for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
+        filters[filters.length - 1].connect(this.gainNode);
     } else {
-      source.connect(this.gainNode);
+        // Aucun filtre → direct
+        source.connect(this.gainNode);
     }
 
+    // Stocker source et gérer timing
     this.mainSource = source;
     this.startTime = this.audioContext.currentTime - this.pauseTime;
     this.isPlaying = true;
-    if (!this.animationId) this.animate();
 
-    try { source.start(0, this.pauseTime); } catch(e) { console.error('source.start failed', e); }
-  }
+    if
+
 
   playQuiz(filteredBand) {
     if (!this.buffer || !filteredBand) return;
