@@ -350,10 +350,12 @@ this.canvas.addEventListener("mouseleave", () => { this.freeMode.dragging = fals
         this.peakingFilter = this.audioContext.createBiquadFilter();
         this.peakingFilter.type = "peaking";
         // chaîner le filtre entre source et gainNode
-        this.mainSource.disconnect();
-        this.mainSource.connect(this.peakingFilter);
-        this.peakingFilter.connect(this.gainNode);
-    }
+        if (this.mainSource) {
+   this.mainSource.disconnect();
+   this.mainSource.connect(this.peakingFilter);
+   this.peakingFilter.connect(this.gainNode);
+}
+
     const {f0, gain, Q} = this.freeMode;
     this.peakingFilter.frequency.value = f0;
     this.peakingFilter.gain.value = gain;
@@ -394,13 +396,13 @@ this.canvas.addEventListener("mouseleave", () => { this.freeMode.dragging = fals
       mid:      { low: 500, high: 2000, color: 'rgba(0,255,0,0.5)', name: 'Mid' },
       highmid:  { low: 2000, high: 4000, color: 'rgba(0,255,255,0.5)', name: 'High Mid' },
       presence: { low: 4000, high: 6000, color: 'rgba(0,0,255,0.5)', name: 'Mid Treble' },
-      brilliance: { low: 6000, high: 15000, color: 'rgba(255,0,255,0.5)', name: 'High Treble' }
+      brilliance: { low: 6000, high: 15000, color: 'rgba(255,0,255,0.5)', name: 'High Treble' },
       air: { low: 15000, high: 20000, color: 'rgba(200,200,200,0.5)', name: 'Air' }
     };
   } 
   else if (mode === '10') {
     this.frequencyBands = {
-      b1: { low: 32,5, high: 65, color: 'rgba(255,0,0,0.5)', name: 'Oct1' },
+      b1: { low: 32.5, high: 65, color: 'rgba(255,0,0,0.5)', name: 'Oct1' },
       b2: { low: 65, high: 131, color: 'rgba(255,165,0,0.5)', name: 'Oct2' },
       b3: { low: 131, high: 262, color: 'rgba(255,255,0,0.5)', name: 'Oct3' },
       b4: { low: 262, high: 523, color: 'rgba(0,255,0,0.5)', name: 'Oct4' },
