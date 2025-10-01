@@ -239,6 +239,7 @@ class AudioApp {
     this.whiteNoiseBtn = document.getElementById("whiteNoiseBtn");
     this.pinkNoiseBtn = document.getElementById("pinkNoiseBtn");
     this.animate();
+    this.freeMode = { f0:1000, gain:0, Q:1, x:200, y:200 };
 
     this.whiteNoiseBtn.addEventListener("click", ()=>this.toggleNoise("white"));
     this.pinkNoiseBtn.addEventListener("click", ()=>this.toggleNoise("pink"));
